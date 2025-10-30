@@ -1,0 +1,56 @@
+{
+  "topic": "Artificial Intelligence",
+  "difficulty": "Easy",
+  "questions": [
+    {
+      "questionText": "What does AI stand for?",
+      "choices": [
+        "Automated Intelligence",
+        "Artificial Intelligence",
+        "Advanced Integration",
+        "Algorithmic Interface"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "Which of the following is an example of AI?",
+      "choices": [
+        "A calculator",
+        "A toaster",
+        "A virtual assistant like Siri",
+        "A light bulb"
+      ],
+      "correctIndex": 2
+    },
+    {
+      "questionText": "What is machine learning?",
+      "choices": [
+        "Teaching machines to move",
+        "A subset of AI where systems learn from data",
+        "Programming machines manually",
+        "Building physical robots"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "What is the Turing Test designed to evaluate?",
+      "choices": [
+        "A machine's processing speed",
+        "A machine's ability to exhibit intelligent behavior indistinguishable from a human",
+        "A machine's memory capacity",
+        "A machine's graphics capabilities"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "Which type of AI is designed to perform a specific task?",
+      "choices": [
+        "General AI",
+        "Narrow AI",
+        "Super AI",
+        "Universal AI"
+      ],
+      "correctIndex": 1
+    }
+  ]
+}

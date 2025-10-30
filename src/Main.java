@@ -1,7 +1,10 @@
 package src;
 
+import src.controller.GameController;
+
 public class Main {
     public static void main(String[] args) {
-        // TODO: Implement main game loop and initialization based on project specification
+        GameController gameController = new GameController();
+        gameController.startGame();
     }
 }

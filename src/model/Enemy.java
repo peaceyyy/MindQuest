@@ -1,5 +1,15 @@
 package src.model;
 
 public class Enemy {
-    // TODO: Implement Enemy class based on project specification
+    private String name;
+
+    public Enemy(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    // No mechanical HP or complex logic as per specification
 }

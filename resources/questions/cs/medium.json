@@ -1,0 +1,56 @@
+{
+  "topic": "Computer Science",
+  "difficulty": "Medium",
+  "questions": [
+    {
+      "questionText": "What is the time complexity of binary search?",
+      "choices": [
+        "O(n)",
+        "O(log n)",
+        "O(n^2)",
+        "O(1)"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "Which data structure uses LIFO (Last In, First Out)?",
+      "choices": [
+        "Queue",
+        "Stack",
+        "Array",
+        "Tree"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "What does SQL stand for?",
+      "choices": [
+        "Simple Query Language",
+        "Structured Query Language",
+        "System Query Logic",
+        "Standard Question Language"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "In object-oriented programming, what is encapsulation?",
+      "choices": [
+        "The ability to create multiple instances of a class",
+        "Hiding internal state and requiring interaction through methods",
+        "The process of creating subclasses",
+        "Running multiple processes simultaneously"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "Which sorting algorithm has the best average-case time complexity?",
+      "choices": [
+        "Bubble Sort",
+        "Merge Sort",
+        "Selection Sort",
+        "Insertion Sort"
+      ],
+      "correctIndex": 1
+    }
+  ]
+}
