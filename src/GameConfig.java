@@ -1,5 +1,5 @@
 package src;
 
 public class GameConfig {
-    public static final boolean DEBUG = true; // Set to true for debug output, false for clean player experience
+    public static final boolean DEBUG = false; // Set to true for debug output, false for clean player experience
 }
