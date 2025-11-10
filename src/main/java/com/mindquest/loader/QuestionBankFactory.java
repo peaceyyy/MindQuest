@@ -1,7 +1,7 @@
-package src.loader;
+package com.mindquest.loader;
 
-import src.model.Question;
-import src.model.QuestionBank;
+import com.mindquest.model.Question;
+import com.mindquest.model.QuestionBank;
 
 import java.io.IOException;
 import java.util.List;

@@ -1,4 +1,4 @@
-package src.model;
+package com.mindquest.model;
 
 import java.util.ArrayList;
 import java.util.Collections;

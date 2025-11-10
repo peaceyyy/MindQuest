@@ -1,4 +1,4 @@
-package src.controller;
+package com.mindquest.controller;
 
 import java.util.Scanner;
 
@@ -9,7 +9,7 @@ public class InputHandler {
         return scanner.nextLine().trim();
     }
 
-    // For "Press Enter to continue" prompts - waits for intentional Enter press
+    // For "Press Enter to continue" prompts 
     public static void waitForEnter() {
         try {
             // Small delay to prevent accidental double-press from previous input

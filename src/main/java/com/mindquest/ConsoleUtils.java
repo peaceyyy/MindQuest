@@ -1,4 +1,4 @@
-package src;
+package com.mindquest;
 
 public class ConsoleUtils {
     public static void clearScreen() {

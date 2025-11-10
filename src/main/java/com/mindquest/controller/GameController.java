@@ -1,9 +1,9 @@
-package src.controller;
+package com.mindquest.controller;
 
-import src.model.Player;
-import src.model.Question;
-import src.model.QuestionBank;
-import src.view.ConsoleUI;
+import com.mindquest.view.ConsoleUI;
+import com.mindquest.model.Player;
+import com.mindquest.model.Question;
+import com.mindquest.model.QuestionBank;
 
 public class GameController {
     private SessionManager sessionManager;

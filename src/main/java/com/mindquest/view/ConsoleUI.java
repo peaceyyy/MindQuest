@@ -1,11 +1,11 @@
-package src.view;
+package com.mindquest.view;
 
-import src.ColorUtils;
-import src.ConsoleUtils;
-import src.GameConfig;
-import src.controller.InputHandler;
-import src.model.Player;
-import src.model.Question;
+import com.mindquest.ColorUtils;
+import com.mindquest.ConsoleUtils;
+import com.mindquest.GameConfig;
+import com.mindquest.controller.InputHandler;
+import com.mindquest.model.Player;
+import com.mindquest.model.Question;
 
 import java.util.List;
 

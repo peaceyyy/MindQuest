@@ -1,5 +1,7 @@
 {
     "files.exclude": {
         "**/*.class": true
-    }
+    },
+
+    "java.project.sourcePaths": ["src/main/java"]
 }

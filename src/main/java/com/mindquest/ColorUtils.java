@@ -1,4 +1,4 @@
-package src;
+package com.mindquest;
 
 public class ColorUtils {
     // ANSI color codes

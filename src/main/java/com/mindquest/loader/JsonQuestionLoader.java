@@ -1,9 +1,9 @@
-package src.loader;
+package com.mindquest.loader;
 
-import src.model.EasyQuestion;
-import src.model.HardQuestion;
-import src.model.MediumQuestion;
-import src.model.Question;
+import com.mindquest.model.EasyQuestion;
+import com.mindquest.model.HardQuestion;
+import com.mindquest.model.MediumQuestion;
+import com.mindquest.model.Question;
 
 import java.io.IOException;
 import java.nio.file.Files;

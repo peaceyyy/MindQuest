@@ -1,8 +1,8 @@
-package src.controller;
+package com.mindquest.controller;
 
-import src.model.Player;
-import src.model.Question;
-import src.model.QuestionBank;
+import com.mindquest.model.Player;
+import com.mindquest.model.Question;
+import com.mindquest.model.QuestionBank;
 
 import java.util.ArrayList;
 import java.util.Collections;
