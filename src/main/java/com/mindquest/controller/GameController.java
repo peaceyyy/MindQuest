@@ -1,5 +1,6 @@
 package com.mindquest.controller;
 
+import com.mindquest.loader.SourceConfig;
 import com.mindquest.view.ConsoleUI;
 import com.mindquest.model.Player;
 import com.mindquest.model.Question;
@@ -47,6 +48,9 @@ public class GameController {
     }
 
     private void showTopicMenu() {
+        // First, let user select the question source
+        showSourceMenu();
+        
         ConsoleUI.displayTopicMenu();
         int choice = InputHandler.getIntInput(1, 4);
         
@@ -72,6 +76,57 @@ public class GameController {
                 ConsoleUI.displayInvalidChoice();
                 break;
         }
+    }
+    
+    private void showSourceMenu() {
+        ConsoleUI.displaySourceMenu();
+        int choice = InputHandler.getIntInput(1, 5);
+        
+        SourceConfig config = null;
+        
+        switch (choice) {
+            case 1:
+                // Built-in Hardcoded Questions (default)
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.BUILTIN_HARDCODED)
+                    .build();
+                break;
+            case 2:
+                // Built-in JSON Files
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.BUILTIN_JSON)
+                    .build();
+                break;
+            case 3:
+                // Custom Excel File (uses default path)
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.CUSTOM_EXCEL)
+                    .build();
+                break;
+            case 4:
+                // Custom CSV File (uses default path)
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.CUSTOM_CSV)
+                    .build();
+                break;
+            case 5:
+                // Gemini API (not implemented yet)
+                ConsoleUI.displayMessage("\nGemini API loader coming soon! Using default hardcoded questions.");
+                try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.BUILTIN_HARDCODED)
+                    .build();
+                break;
+            default:
+                ConsoleUI.displayInvalidChoice();
+                config = new SourceConfig.Builder()
+                    .type(SourceConfig.SourceType.BUILTIN_HARDCODED)
+                    .build();
+                break;
+        }
+        
+        // Set the source config in the session manager
+        sessionManager.setSourceConfig(config);
     }
 
     private void showDifficultyMenuAndStartRound(String topic) {

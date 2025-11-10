@@ -1,7 +1,12 @@
 {
-    "files.exclude": {
-        "**/*.class": true
-    },
+  "files.exclude": {
+    "**/*.class": true
+  },
 
-    "java.project.sourcePaths": ["src/main/java"]
+  "java.project.sourcePaths": ["src/main/java"],
+  "code-runner.fileDirectoryAsCwd": false,
+  "code-runner.runInTerminal": true,
+  "python-envs.defaultEnvManager": "ms-python.python:pyenv",
+  "python-envs.pythonProjects": [],
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

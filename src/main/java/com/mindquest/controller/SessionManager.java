@@ -1,5 +1,7 @@
 package com.mindquest.controller;
 
+import com.mindquest.loader.QuestionBankFactory;
+import com.mindquest.loader.SourceConfig;
 import com.mindquest.model.Player;
 import com.mindquest.model.Question;
 import com.mindquest.model.QuestionBank;
@@ -18,7 +20,8 @@ public class SessionManager {
     private String currentTopic;
     private String currentDifficulty;
     private int currentQuestionIndex;
-    private int globalPoints; // Tracks total points across all rounds in this session
+    private int globalPoints;
+    private SourceConfig sourceConfig; // Current source configuration
 
     public SessionManager(Player player, QuestionBank questionBank) {
         this.player = player;
@@ -26,19 +29,44 @@ public class SessionManager {
         this.usedQuestionIds = new HashSet<>();
         this.currentRoundQuestions = new ArrayList<>();
         this.currentQuestionIndex = 0;
-        this.globalPoints = 0; // Initialize global points
+        this.globalPoints = 0;
+        this.sourceConfig = null; // No source config by default (uses hardcoded)
+    }
+    
+    /**
+     * Sets the question source configuration for this session.
+     */
+    public void setSourceConfig(SourceConfig config) {
+        this.sourceConfig = config;
     }
 
     public void startNewRound(String topic, String difficulty) {
         this.currentTopic = topic;
         this.currentDifficulty = difficulty;
-        player.resetForRound(); // Reset HP and hints for the new round
+        player.resetForRound();
         loadQuestionsForRound(topic, difficulty);
         currentQuestionIndex = 0;
     }
 
     private void loadQuestionsForRound(String topic, String difficulty) {
-        List<Question> availableQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
+        List<Question> availableQuestions;
+        
+        // Use QuestionBankFactory with SourceConfig if available
+        if (sourceConfig != null) {
+            // Build a config with topic and difficulty for this round
+            SourceConfig roundConfig = new SourceConfig.Builder()
+                .type(sourceConfig.getType())
+                .topic(topic)
+                .difficulty(difficulty)
+                .filePath(sourceConfig.getFilePath())
+                .extraParams(sourceConfig.getExtraParams())
+                .build();
+            
+            availableQuestions = QuestionBankFactory.getQuestions(roundConfig);
+        } else {
+            // Fallback to hardcoded QuestionBank
+            availableQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
+        }
         if (availableQuestions == null || availableQuestions.isEmpty()) {
             System.out.println("No questions available for " + topic + " - " + difficulty);
             return;

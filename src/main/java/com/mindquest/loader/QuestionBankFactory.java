@@ -3,46 +3,71 @@ package com.mindquest.loader;
 import com.mindquest.model.Question;
 import com.mindquest.model.QuestionBank;
 
-import java.io.IOException;
 import java.util.List;
 
-/*
- * Toggle between:
- * - Hardcoded questions (QuestionBank.java)
- * - JSON file-based questions (resources/questions/)
- * - Future: API-based questions (Gemini, etc.)
+/**
+ * Factory for loading questions from various sources.
+ * Supports: Hardcoded QuestionBank, JSON files, CSV files, Excel files, and Gemini API.
+ * Uses QuestionSource interface for unified loading.
  */
-
 public class QuestionBankFactory {
 
-    public enum LoaderMode {
-        HARDCODED,  // Use QuestionBank.java
-        JSON,       // Use JSON files from resources/
-        API         // Future: Use external API
-    }
+    // Default mode - can be overridden during run
+    private static SourceConfig.SourceType DEFAULT_MODE = SourceConfig.SourceType.BUILTIN_HARDCODED;
+    
 
-    // Global toggle - change this to switch between loading strategies
-    private static final LoaderMode MODE = LoaderMode.HARDCODED;
+    public static List<Question> getQuestions(SourceConfig config) {
+        try {
+            QuestionSource loader = createLoader(config.getType());
+            return loader.loadQuestions(config);
+        } catch (Exception e) {
+            System.err.println("Error loading questions from " + config.getType() + ": " + e.getMessage());
+            System.out.println("Falling back to hardcoded questions.");
+            return getQuestionsFromHardcoded(config.getTopic(), config.getDifficulty());
+        }
+    }
+    
+    /**
+     * Uses default mode (BUILTIN_HARDCODED).
+     */
     public static List<Question> getQuestions(String topic, String difficulty) {
-        switch (MODE) {
-            case HARDCODED:
-                return getQuestionsFromHardcoded(topic, difficulty);
+        SourceConfig config = new SourceConfig.Builder()
+            .type(DEFAULT_MODE)
+            .topic(topic)
+            .difficulty(difficulty)
+            .build();
+        return getQuestions(config);
+    }
+    
+    /**
+     * Creates the appropriate QuestionSource implementation based on source type.
+     */
+    private static QuestionSource createLoader(SourceConfig.SourceType type) {
+        switch (type) {
+            case BUILTIN_HARDCODED:
+                return new HardcodedQuestionSource();
             
-            case JSON:
-                return getQuestionsFromJson(topic, difficulty);
+            case BUILTIN_JSON:
+                return new JsonQuestionLoader();
             
-            case API:
-                // Future implementation
-                System.out.println("API mode not yet implemented. Falling back to hardcoded.");
-                return getQuestionsFromHardcoded(topic, difficulty);
+            case CUSTOM_EXCEL:
+                return new ExcelQuestionLoader();
+            
+            case CUSTOM_CSV:
+                return new CsvQuestionLoader();
+            
+            case GEMINI_API:
+                // TODO: Implement Gemini API loader
+                throw new UnsupportedOperationException("Gemini API loader not yet implemented");
             
             default:
-                return getQuestionsFromHardcoded(topic, difficulty);
+                return new HardcodedQuestionSource();
         }
     }
 
     /**
      * Loads questions from the original hardcoded QuestionBank.
+     * Used for fallback when other loaders fail.
      */
     private static List<Question> getQuestionsFromHardcoded(String topic, String difficulty) {
         QuestionBank bank = new QuestionBank();
@@ -50,26 +75,15 @@ public class QuestionBankFactory {
     }
 
     /**
-     * Loads questions from JSON files in resources/questions/.
-     */
-    private static List<Question> getQuestionsFromJson(String topic, String difficulty) {
-        try {
-            String topicFolder = getTopicFolder(topic);
-            String difficultyFile = difficulty.toLowerCase();
-            
-            return JsonQuestionLoader.loadQuestions(topicFolder, difficultyFile);
-            
-        } catch (IOException e) {
-            System.err.println("Error loading JSON questions: " + e.getMessage());
-            System.out.println("Falling back to hardcoded questions.");
-            return getQuestionsFromHardcoded(topic, difficulty);
-        }
-    }
-
-    /**
      * Maps Topic string to folder name in resources/questions/.
      */
     private static String getTopicFolder(String topic) {
+        // If already a short folder name, return as-is
+        if (topic.equals("cs") || topic.equals("ai") || topic.equals("philosophy")) {
+            return topic;
+        }
+        
+        // Map full names to folder names
         switch (topic) {
             case "Computer Science":
                 return "cs";
@@ -78,12 +92,21 @@ public class QuestionBankFactory {
             case "Philosophy":
                 return "philosophy";
             default:
-                return "cs";
+                return topic.toLowerCase();
         }
     }
 
-
+    /**
+     * Gets the current default mode for backward compatibility.
+     */
     public static String getCurrentMode() {
-        return "Question Loading Mode: " + MODE.toString();
+        return "Question Loading Mode: " + DEFAULT_MODE.toString();
+    }
+    
+    /**
+     * Sets the default mode for backward compatibility.
+     */
+    public static void setDefaultMode(SourceConfig.SourceType mode) {
+        DEFAULT_MODE = mode;
     }
 }

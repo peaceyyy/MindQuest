@@ -15,19 +15,35 @@ import java.util.List;
 /**
  * Loads questions from JSON files in the resources/questions directory.
  * Designed for "plug and play" - easily swap between hardcoded and file-based questions.
+ * Implements QuestionSource for unified loading interface.
  */
-public class JsonQuestionLoader {
+public class JsonQuestionLoader implements QuestionSource {
 
-    private static final String BASE_PATH = "resources/questions/";
+    private static final String BASE_PATH = "src/questions/built-in/";
 
     /**
-     * Loads questions from a JSON file for a specific topic and difficulty.
-     * 
-     * @param topic The topic folder (e.g., "cs", "ai", "philosophy")
-     * @param difficulty The difficulty level ("easy", "medium", "hard")
-     * @return List of Question objects loaded from the JSON file
-     * @throws IOException if the file cannot be read
+     * Implements QuestionSource interface.
+     * Loads questions from JSON files based on the provided configuration.
      */
+    @Override
+    public List<Question> loadQuestions(SourceConfig config) throws IOException {
+        String topic = config.getTopic();
+        String difficulty = config.getDifficulty();
+        
+        // Convert topic to folder name if needed
+        String topicFolder = getTopicFolder(topic);
+        
+        return loadQuestions(topicFolder, difficulty.toLowerCase());
+    }
+    
+    /**
+     * Returns the source name for logging and user feedback.
+     */
+    @Override
+    public String getSourceName() {
+        return "Built-in JSON Files";
+    }
+
     public static List<Question> loadQuestions(String topic, String difficulty) throws IOException {
         String filePath = BASE_PATH + topic + "/" + difficulty + ".json";
         String jsonContent = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -182,5 +198,28 @@ public class JsonQuestionLoader {
     
     private static String generateQuestionId(String difficulty) {
         return "JSON_" + difficulty.toUpperCase() + "_" + String.format("%03d", questionCounter++);
+    }
+    
+    /**
+     * Maps topic string to folder name in resources/questions/.
+     * Handles both full names and abbreviated folder names.
+     */
+    private static String getTopicFolder(String topic) {
+        // If already a short folder name, return as-is
+        if (topic.equals("cs") || topic.equals("ai") || topic.equals("philosophy")) {
+            return topic;
+        }
+        
+        // Map full names to folder names
+        switch (topic) {
+            case "Computer Science":
+                return "cs";
+            case "Artificial Intelligence":
+                return "ai";
+            case "Philosophy":
+                return "philosophy";
+            default:
+                return topic.toLowerCase(); // FallbackW
+        }
     }
 }

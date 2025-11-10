@@ -1,0 +1,6 @@
+topic,difficulty,questionText,choice0,choice1,choice2,choice3,correctIndex
+Computer Science,Easy,"What does ""SaaS"" stand for?",Software as a Service,Security as a Service,System as a Service,Software as a System,0
+Computer Science,Easy,What is the primary function of an operating system (OS)?,To run web browsers,To manage computer hardware and software resources,To create documents and spreadsheets,To protect against viruses,1
+Computer Science,Medium,Which of the following is a dynamically-typed language?,C++,Java,Python,C#,2
+Computer Science,Medium,What is the purpose of an index in a database?,To back up the data,To speed up the performance of queries,To encrypt the data,To provide a user interface,1
+Computer Science,Hard,"In the context of REST APIs, what does ""idempotent"" mean?",An operation that is very fast,An operation that returns a unique ID,An operation that has the same result whether it is executed once or multiple times,An operation that can only be performed by an administrator,2

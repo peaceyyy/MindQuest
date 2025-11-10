@@ -60,6 +60,24 @@ public class ConsoleUI {
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
 
+    public static void displaySourceMenu() {
+        clearScreen();
+        System.out.println(ColorUtils.boldOrange("*****************************************"));
+        System.out.println(ColorUtils.boldOrange("*") + ColorUtils.boldYellow("       SELECT QUESTION SOURCE        ") + ColorUtils.boldOrange("*"));
+        System.out.println(ColorUtils.boldOrange("*****************************************"));
+        System.out.println(ColorUtils.yellow("1.") + " Built-in Hardcoded Questions " + ColorUtils.orange("(Default)"));
+        System.out.println(ColorUtils.yellow("2.") + " Built-in JSON Files");
+        System.out.println(ColorUtils.yellow("3.") + " Custom Excel File (.xlsx)");
+        System.out.println(ColorUtils.yellow("4.") + " Custom CSV File");
+        System.out.println(ColorUtils.yellow("5.") + " Gemini AI Generated " + ColorUtils.orange("(Coming Soon)"));
+        System.out.println("\n" + ColorUtils.orange("Note: For custom files, place topic-based files in:"));
+        System.out.println(ColorUtils.orange("  - CSV:   src/questions/external_source/csv/{topic}.csv"));
+        System.out.println(ColorUtils.orange("           (e.g., ai.csv, cs.csv, philosophy.csv)"));
+        System.out.println(ColorUtils.orange("  - Excel: src/questions/external_source/xlsx/{topic}.xlsx"));
+        System.out.println(ColorUtils.orange("           (e.g., ai.xlsx, cs.xlsx, philosophy.xlsx)"));
+        System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
+    }
+
     public static void displayQuestion(Player player, Question question, boolean hintUsed) {
         clearScreen();
         displayHUD(player);
@@ -69,7 +87,7 @@ public class ConsoleUI {
         for (int i = 0; i < choicesToDisplay.size(); i++) {
             System.out.println(String.format("%d. %s", (i + 1), choicesToDisplay.get(i)));
         }
-        System.out.println("\nType HINT to use your hint (Remaining: " + player.getHints() + ")");
+        System.out.println("\nType HINT remove half of the incorrect options (Remaining: " + player.getHints() + ")");
         System.out.print("Enter your answer (1-" + choicesToDisplay.size() + "): ");
 
         if (GameConfig.DEBUG) {
