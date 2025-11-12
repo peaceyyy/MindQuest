@@ -1,10 +1,13 @@
 package com.mindquest.controller;
 
 import com.mindquest.loader.SourceConfig;
+import com.mindquest.loader.TopicScanner;
 import com.mindquest.view.ConsoleUI;
 import com.mindquest.model.Player;
 import com.mindquest.model.Question;
 import com.mindquest.model.QuestionBank;
+
+import java.util.List;
 
 public class GameController {
     private SessionManager sessionManager;
@@ -51,30 +54,29 @@ public class GameController {
         // First, let user select the question source
         showSourceMenu();
         
-        ConsoleUI.displayTopicMenu();
-        int choice = InputHandler.getIntInput(1, 4);
+        // Get available topics based on selected source
+        SourceConfig.SourceType selectedSource = sessionManager.getSourceConfig().getType();
+        List<String> availableTopics = TopicScanner.getAvailableTopics(selectedSource);
         
-        String topic = "";
-        switch (choice) {
-            case 1:
-                topic = "Computer Science";
-                showDifficultyMenuAndStartRound(topic);
-                break;
-            case 2:
-                topic = "Artificial Intelligence";
-                showDifficultyMenuAndStartRound(topic);
-                break;
-            case 3:
-                topic = "Philosophy";
-                showDifficultyMenuAndStartRound(topic);
-                break;
-            case 4:
-                ConsoleUI.displayMessage("\nMixed Mode coming soon!");
-                try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-                break;
-            default:
-                ConsoleUI.displayInvalidChoice();
-                break;
+        if (availableTopics.isEmpty()) {
+            ConsoleUI.displayMessage("\nNo topics found for the selected source!");
+            ConsoleUI.displayMessage("Please add files to the appropriate directory.");
+            try { Thread.sleep(2500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            return;
+        }
+        
+        // Display dynamic topic menu
+        ConsoleUI.displayDynamicTopicMenu(availableTopics);
+        int choice = InputHandler.getIntInput(1, availableTopics.size() + 1);
+        
+        if (choice == availableTopics.size() + 1) {
+            // Mixed Mode (coming soon)
+            ConsoleUI.displayMessage("\nMixed Mode coming soon!");
+            try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        } else {
+            // Valid topic selection
+            String selectedTopic = availableTopics.get(choice - 1);
+            showDifficultyMenuAndStartRound(selectedTopic);
         }
     }
     

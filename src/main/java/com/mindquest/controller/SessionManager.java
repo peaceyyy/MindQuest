@@ -39,6 +39,13 @@ public class SessionManager {
     public void setSourceConfig(SourceConfig config) {
         this.sourceConfig = config;
     }
+    
+    /**
+     * Gets the current question source configuration.
+     */
+    public SourceConfig getSourceConfig() {
+        return this.sourceConfig;
+    }
 
     public void startNewRound(String topic, String difficulty) {
         this.currentTopic = topic;

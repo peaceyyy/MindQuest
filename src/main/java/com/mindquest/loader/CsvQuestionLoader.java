@@ -20,7 +20,6 @@ import java.util.List;
  */
 public class CsvQuestionLoader implements QuestionSource {
 
-    private static final String BASE_PATH = "src/questions/external_source/csv/";
     private static int questionCounter = 1;
 
     /**
@@ -32,9 +31,8 @@ public class CsvQuestionLoader implements QuestionSource {
         String topic = config.getTopic();
         String difficulty = config.getDifficulty();
         
-        // Map topic to filename
-        String topicFile = getTopicFileName(topic);
-        String filePath = BASE_PATH + topicFile + ".csv";
+        // Use TopicScanner to get file path (supports both old hardcoded names and dynamic filenames)
+        String filePath = TopicScanner.getTopicFilePath(getTopicFileName(topic), SourceConfig.SourceType.CUSTOM_CSV);
         
         System.out.println("[CSV Loader] Loading from: " + filePath);
         System.out.println("[CSV Loader] Filtering for difficulty: " + difficulty);
@@ -56,10 +54,17 @@ public class CsvQuestionLoader implements QuestionSource {
     /**
      * Maps display topic name to CSV filename (without extension).
      * Example: "Artificial Intelligence" → "ai"
+     * If topic is already a filename (e.g., "ai"), returns as-is.
      */
     private static String getTopicFileName(String topic) {
         if (topic == null) return "unknown";
         
+        // If already a short code (lowercase, no spaces), assume it's a filename
+        if (topic.equals(topic.toLowerCase()) && !topic.contains(" ")) {
+            return topic;
+        }
+        
+        // Map full names to short codes
         switch (topic.toLowerCase()) {
             case "artificial intelligence":
                 return "ai";

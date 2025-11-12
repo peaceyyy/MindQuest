@@ -48,6 +48,35 @@ public class ConsoleUI {
         System.out.println(ColorUtils.yellow("4.") + " Mixed Mode " + ColorUtils.orange("(Coming Soon)"));
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
+    
+    public static void displayDynamicTopicMenu(List<String> topics) {
+        clearScreen();
+        System.out.println(ColorUtils.boldOrange("*****************************************"));
+        System.out.println(ColorUtils.boldOrange("*") + ColorUtils.boldYellow("         SELECT TOPIC                ") + ColorUtils.boldOrange("*"));
+        System.out.println(ColorUtils.boldOrange("*****************************************"));
+        
+        for (int i = 0; i < topics.size(); i++) {
+            System.out.println(ColorUtils.yellow((i + 1) + ".") + " " + formatTopicName(topics.get(i)));
+        }
+        
+        // Always show Mixed Mode option at the end
+        System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Mode " + ColorUtils.orange("(Coming Soon)"));
+        
+        System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
+    }
+    
+    /**
+     * Formats topic names for display (converts lowercase filenames to Title Case).
+     */
+    private static String formatTopicName(String topic) {
+        // Special case mappings
+        if (topic.equals("cs")) return "Computer Science";
+        if (topic.equals("ai")) return "Artificial Intelligence";
+        
+        // Convert to title case (e.g., "philosophy" -> "Philosophy")
+        if (topic.isEmpty()) return topic;
+        return topic.substring(0, 1).toUpperCase() + topic.substring(1).toLowerCase();
+    }
 
     public static void displayDifficultyMenu() {
         clearScreen();
