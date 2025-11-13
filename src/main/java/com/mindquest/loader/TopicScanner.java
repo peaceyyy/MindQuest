@@ -102,8 +102,7 @@ public class TopicScanner {
                 return XLSX_BASE_PATH + topic + ".xlsx";
                 
             case BUILTIN_JSON:
-                // JSON files are nested: built-in/{topic}/{difficulty}.json
-                // Return base path for the topic folder
+        
                 return "src/questions/built-in/" + topic + "/";
                 
             default:

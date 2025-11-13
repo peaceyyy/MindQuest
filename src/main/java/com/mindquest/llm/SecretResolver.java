@@ -106,7 +106,8 @@ public class SecretResolver {
         
         // Only load known LLM-related keys
         String[] llmKeys = {
-            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",      // Official SDK standard (recommended)
+            "GEMINI_API_KEY",      // Legacy support
             "OPENAI_API_KEY",
             "LOCAL_LLM_ENDPOINT",
             "LOCAL_LLM_MODEL",
@@ -152,9 +153,15 @@ public class SecretResolver {
     }
     
     /**
-     * Gets the Gemini API key specifically.
+     * Gets the Gemini API key.
+     * Tries GOOGLE_API_KEY first (recommended), then falls back to legacy GEMINI_API_KEY.
      */
     public String getGeminiApiKey() {
+        String key = getSecret("GOOGLE_API_KEY");
+        if (key != null) {
+            return key;
+        }
+        // Fallback to legacy key name
         return getSecret("GEMINI_API_KEY");
     }
     

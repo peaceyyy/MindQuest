@@ -19,6 +19,13 @@
     </properties>
 
     <dependencies>
+        <!-- Google GenAI SDK for Gemini API -->
+        <dependency>
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.27.0</version>
+        </dependency>
+
         <!-- Gson for JSON parsing when you migrate to JSON files or API responses -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
