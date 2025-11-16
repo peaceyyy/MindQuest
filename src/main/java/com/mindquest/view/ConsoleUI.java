@@ -1,11 +1,11 @@
 package com.mindquest.view;
 
-import com.mindquest.ColorUtils;
-import com.mindquest.ConsoleUtils;
-import com.mindquest.GameConfig;
+import com.mindquest.util.ColorUtils;
+import com.mindquest.util.ConsoleUtils;
+import com.mindquest.config.GameConfig;
 import com.mindquest.controller.InputHandler;
-import com.mindquest.model.Player;
-import com.mindquest.model.Question;
+import com.mindquest.model.game.Player;
+import com.mindquest.model.question.Question;
 
 import java.util.List;
 
@@ -98,12 +98,13 @@ public class ConsoleUI {
         System.out.println(ColorUtils.yellow("2.") + " Built-in JSON Files");
         System.out.println(ColorUtils.yellow("3.") + " Custom Excel File (.xlsx)");
         System.out.println(ColorUtils.yellow("4.") + " Custom CSV File");
-        System.out.println(ColorUtils.yellow("5.") + " Gemini AI Generated " + ColorUtils.orange("(Coming Soon)"));
+        System.out.println(ColorUtils.yellow("5.") + " Gemini AI Generated");
         System.out.println("\n" + ColorUtils.orange("Note: For custom files, place topic-based files in:"));
         System.out.println(ColorUtils.orange("  - CSV:   src/questions/external_source/csv/{topic}.csv"));
         System.out.println(ColorUtils.orange("           (e.g., ai.csv, cs.csv, philosophy.csv)"));
         System.out.println(ColorUtils.orange("  - Excel: src/questions/external_source/xlsx/{topic}.xlsx"));
         System.out.println(ColorUtils.orange("           (e.g., ai.xlsx, cs.xlsx, philosophy.xlsx)"));
+        System.out.println(ColorUtils.orange("  - Gemini: Requires GEMINI_API_KEY in .env file"));
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
 

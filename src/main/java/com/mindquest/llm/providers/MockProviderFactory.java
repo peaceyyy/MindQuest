@@ -1,6 +1,7 @@
 package com.mindquest.llm.providers;
 
 import com.mindquest.llm.*;
+import com.mindquest.llm.exception.LlmException;
 
 /**
  * Factory for creating MockProvider instances.

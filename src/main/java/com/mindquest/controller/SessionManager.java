@@ -1,9 +1,9 @@
 package com.mindquest.controller;
 
-import com.mindquest.loader.QuestionBankFactory;
-import com.mindquest.loader.SourceConfig;
-import com.mindquest.model.Player;
-import com.mindquest.model.Question;
+import com.mindquest.loader.factory.QuestionBankFactory;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.model.game.Player;
+import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
 
 import java.util.ArrayList;

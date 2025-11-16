@@ -1,4 +1,4 @@
-package com.mindquest.loader;
+package com.mindquest.loader.config;
 
 import java.util.HashMap;
 import java.util.Map;

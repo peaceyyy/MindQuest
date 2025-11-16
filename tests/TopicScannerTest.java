@@ -1,6 +1,7 @@
 package com.mindquest.loader;
 
-import com.mindquest.loader.SourceConfig.SourceType;
+import com.mindquest.loader.TopicScanner;
+import com.mindquest.loader.config.SourceConfig.SourceType;
 import java.util.List;
 
 /**

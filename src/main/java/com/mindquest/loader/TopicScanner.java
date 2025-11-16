@@ -1,5 +1,6 @@
 package com.mindquest.loader;
 
+import com.mindquest.loader.config.SourceConfig;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,6 +34,12 @@ public class TopicScanner {
             case BUILTIN_JSON:
                 // For JSON, scan built-in resources (fixed structure)
                 topics.addAll(Arrays.asList("cs", "ai", "philosophy"));
+                break;
+                
+            case GEMINI_API:
+                // Gemini can generate questions for any topic
+                // Return standard topics as suggestions
+                topics.addAll(Arrays.asList("Computer Science", "Artificial Intelligence", "Philosophy"));
                 break;
                 
             case BUILTIN_HARDCODED:

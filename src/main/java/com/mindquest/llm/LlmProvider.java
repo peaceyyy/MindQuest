@@ -1,5 +1,6 @@
 package com.mindquest.llm;
 
+import com.mindquest.llm.exception.LlmException;
 import java.util.concurrent.Flow;
 
 /**

@@ -1,5 +1,9 @@
 package com.mindquest.model;
 
+import com.mindquest.model.question.Question;
+import com.mindquest.model.question.EasyQuestion;
+import com.mindquest.model.question.MediumQuestion;
+import com.mindquest.model.question.HardQuestion;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

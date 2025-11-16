@@ -1,4 +1,4 @@
-package com.mindquest.llm;
+package com.mindquest.llm.prompts;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -64,7 +64,7 @@ public class PromptTemplates {
     }
     
     /**
-     * Extracts clean JSON from LLM response (removes markdown code blocks if present).
+     * Extracts clean JSON from LLM response
      */
     public static String extractJson(String llmResponse) {
         if (llmResponse == null) return null;
@@ -86,12 +86,12 @@ public class PromptTemplates {
     }
     
     /**
-     * Post-processes LLM-generated question JSON to fix common errors.
+     * Post-processes LLM-generated question JSON to fix errors.
      * 
      * Common issues fixed:
      * - Too many choices (truncates to 4)
      * - Too few choices (pads with placeholder)
-     * - Invalid correctIndex (clamps to 0-3)
+     * - Invalid correctIndex (Follows0-based Index)
      * 
      * @param questionJson The raw JSON from LLM
      * @return Sanitized JSON that matches expected format

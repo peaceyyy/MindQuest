@@ -1,32 +1,33 @@
-package com.mindquest.loader;
+package com.mindquest.loader.source;
 
-import com.mindquest.model.EasyQuestion;
-import com.mindquest.model.HardQuestion;
-import com.mindquest.model.MediumQuestion;
-import com.mindquest.model.Question;
+import com.mindquest.loader.QuestionSource;
+import com.mindquest.loader.TopicScanner;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.model.question.EasyQuestion;
+import com.mindquest.model.question.HardQuestion;
+import com.mindquest.model.question.MediumQuestion;
+import com.mindquest.model.question.Question;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
- * Loads questions from Excel (.xlsx) files using Apache POI.
+ * Loads questions from CSV files using OpenCSV.
  * Expected columns: topic, difficulty, questionText, choice0, choice1, choice2, choice3, correctIndex
- * Implements QuestionSource for unified loading interface.
- * Default file location: src/questions/external_source/xlsx/{topic}.xlsx
+ * Default file location: src/questions/external_source/csv/{topic}.csv
  */
-public class ExcelQuestionLoader implements QuestionSource {
+public class CsvQuestionLoader implements QuestionSource {
 
     private static int questionCounter = 1;
 
     /**
      * Implements QuestionSource interface.
-     * Loads questions from Excel file based on topic in the configuration.
+     * Loads questions from CSV file based on topic in the configuration.
      */
     @Override
     public List<Question> loadQuestions(SourceConfig config) throws IOException {
@@ -34,13 +35,13 @@ public class ExcelQuestionLoader implements QuestionSource {
         String difficulty = config.getDifficulty();
         
         // Use TopicScanner to get file path (supports both old hardcoded names and dynamic filenames)
-        String filePath = TopicScanner.getTopicFilePath(getTopicFileName(topic), SourceConfig.SourceType.CUSTOM_EXCEL);
+        String filePath = TopicScanner.getTopicFilePath(getTopicFileName(topic), SourceConfig.SourceType.CUSTOM_CSV);
         
-        System.out.println("[Excel Loader] Loading from: " + filePath);
-        System.out.println("[Excel Loader] Filtering for difficulty: " + difficulty);
+        System.out.println("[CSV Loader] Loading from: " + filePath);
+        System.out.println("[CSV Loader] Filtering for difficulty: " + difficulty);
         
         List<Question> result = loadQuestionsFromFile(filePath, difficulty);
-        System.out.println("[Excel Loader] Loaded " + result.size() + " questions");
+        System.out.println("[CSV Loader] Loaded " + result.size() + " questions");
         
         return result;
     }
@@ -50,11 +51,11 @@ public class ExcelQuestionLoader implements QuestionSource {
      */
     @Override
     public String getSourceName() {
-        return "Excel (.xlsx) File";
+        return "CSV File";
     }
 
     /**
-     * Maps display topic name to Excel filename (without extension).
+     * Maps display topic name to CSV filename (without extension).
      * Example: "Artificial Intelligence" → "ai"
      * If topic is already a filename (e.g., "ai"), returns as-is.
      */
@@ -80,9 +81,9 @@ public class ExcelQuestionLoader implements QuestionSource {
     }
 
     /**
-     * Loads questions from an Excel file and filters by difficulty.
+     * Loads questions from a CSV file and filters by difficulty.
      * 
-     * @param filePath Path to the Excel file
+     * @param filePath Path to the CSV file
      * @param difficulty Difficulty level to filter (null = load all)
      * @return List of Question objects matching the difficulty
      * @throws IOException if file cannot be read
@@ -120,27 +121,26 @@ public class ExcelQuestionLoader implements QuestionSource {
     }
 
     /**
-     * Loads questions from an Excel file (.xlsx).
+     * Loads questions from a CSV file.
      * Legacy static method maintained for backward compatibility.
      * 
-     * @param filePath Path to the Excel file
+     * @param filePath Path to the CSV file
      * @return List of Question objects
      * @throws IOException if file cannot be read
      */
-
     public static List<Question> loadQuestions(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         
-        try (InputStream fis = new FileInputStream(filePath);
-             Workbook workbook = new XSSFWorkbook(fis)) {
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            List<String[]> rows = reader.readAll();
             
-            Sheet sheet = workbook.getSheetAt(0); // Read first sheet
-            
-            // Skip header row (row 0)
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null || isRowEmpty(row)) {
-                    continue; // Skip empty rows
+            // Skip header row (first row)
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+                
+                // Skip empty rows
+                if (row == null || row.length == 0 || isRowEmpty(row)) {
+                    continue;
                 }
                 
                 try {
@@ -152,35 +152,38 @@ public class ExcelQuestionLoader implements QuestionSource {
                     System.err.println("Error parsing row " + (i + 1) + ": " + e.getMessage());
                 }
             }
+        } catch (CsvException e) {
+            throw new IOException("Error reading CSV file: " + e.getMessage(), e);
         }
         
         return questions;
     }
 
     /**
-     * Parses a single Excel row into a Question object.
-     * Expected format: topic | difficulty | questionText | choice0 | choice1 | choice2 | choice3 | correctIndex
+     * Parses a single CSV row into a Question object.
+     * Expected format: topic, difficulty, questionText, choice0, choice1, choice2, choice3, correctIndex
      */
-    private static Question parseRow(Row row) {
+    private static Question parseRow(String[] row) {
         try {
-            String topic = getCellValueAsString(row.getCell(0));
-            String difficulty = getCellValueAsString(row.getCell(1));
-            String questionText = getCellValueAsString(row.getCell(2));
+            if (row.length < 8) {
+                System.err.println("Row has insufficient columns: " + Arrays.toString(row));
+                return null;
+            }
+            
+            String topic = row[0].trim();
+            String difficulty = row[1].trim();
+            String questionText = row[2].trim();
             
             // Read choices (choice0, choice1, choice2, choice3)
             List<String> choices = new ArrayList<>();
             for (int i = 3; i <= 6; i++) {
-                Cell cell = row.getCell(i);
-                if (cell != null) {
-                    String choice = getCellValueAsString(cell);
-                    if (!choice.isEmpty()) {
-                        choices.add(choice);
-                    }
+                if (i < row.length && !row[i].trim().isEmpty()) {
+                    choices.add(row[i].trim());
                 }
             }
             
             // Read correct index
-            int correctIndex = (int) getCellValueAsNumber(row.getCell(7));
+            int correctIndex = Integer.parseInt(row[7].trim());
             
             // Validate required fields
             if (questionText.isEmpty() || choices.isEmpty()) {
@@ -209,72 +212,12 @@ public class ExcelQuestionLoader implements QuestionSource {
     }
 
     /**
-     * Extracts cell value as String, handling different cell types.
+     * Checks if a row is empty (all cells are blank or whitespace).
      */
-    private static String getCellValueAsString(Cell cell) {
-        if (cell == null) {
-            return "";
-        }
-        
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue().trim();
-            case NUMERIC:
-                // Handle numeric values (convert to string without decimals if whole number)
-                double numValue = cell.getNumericCellValue();
-                if (numValue == Math.floor(numValue)) {
-                    return String.valueOf((int) numValue);
-                }
-                return String.valueOf(numValue);
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                // Evaluate formula and return result
-                return cell.getStringCellValue();
-            case BLANK:
-                return "";
-            default:
-                return "";
-        }
-    }
-
-    /**
-     * Extracts cell value as numeric, handling different cell types.
-     */
-    private static double getCellValueAsNumber(Cell cell) {
-        if (cell == null) {
-            return 0;
-        }
-        
-        switch (cell.getCellType()) {
-            case NUMERIC:
-                return cell.getNumericCellValue();
-            case STRING:
-                try {
-                    return Double.parseDouble(cell.getStringCellValue().trim());
-                } catch (NumberFormatException e) {
-                    return 0;
-                }
-            default:
-                return 0;
-        }
-    }
-
-    /**
-     * Checks if a row is empty (all cells are blank or null).
-     */
-    private static boolean isRowEmpty(Row row) {
-        if (row == null) {
-            return true;
-        }
-        
-        for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
-            Cell cell = row.getCell(i);
-            if (cell != null && cell.getCellType() != CellType.BLANK) {
-                String value = getCellValueAsString(cell);
-                if (!value.isEmpty()) {
-                    return false;
-                }
+    private static boolean isRowEmpty(String[] row) {
+        for (String cell : row) {
+            if (cell != null && !cell.trim().isEmpty()) {
+                return false;
             }
         }
         return true;
@@ -284,6 +227,6 @@ public class ExcelQuestionLoader implements QuestionSource {
      * Generates a unique question ID.
      */
     private static String generateQuestionId(String difficulty) {
-        return "EXCEL_" + difficulty.toUpperCase() + "_" + String.format("%03d", questionCounter++);
+        return "CSV_" + difficulty.toUpperCase() + "_" + String.format("%03d", questionCounter++);
     }
 }

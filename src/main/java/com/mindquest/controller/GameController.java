@@ -1,10 +1,10 @@
 package com.mindquest.controller;
 
-import com.mindquest.loader.SourceConfig;
+import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.loader.TopicScanner;
 import com.mindquest.view.ConsoleUI;
-import com.mindquest.model.Player;
-import com.mindquest.model.Question;
+import com.mindquest.model.game.Player;
+import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
 
 import java.util.List;
@@ -112,11 +112,9 @@ public class GameController {
                     .build();
                 break;
             case 5:
-                // Gemini API (not implemented yet)
-                ConsoleUI.displayMessage("\nGemini API loader coming soon! Using default hardcoded questions.");
-                try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                // Gemini API
                 config = new SourceConfig.Builder()
-                    .type(SourceConfig.SourceType.BUILTIN_HARDCODED)
+                    .type(SourceConfig.SourceType.GEMINI_API)
                     .build();
                 break;
             default:

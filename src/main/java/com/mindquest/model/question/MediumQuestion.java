@@ -1,4 +1,4 @@
-package com.mindquest.model;
+package com.mindquest.model.question;
 
 import java.util.List;
 

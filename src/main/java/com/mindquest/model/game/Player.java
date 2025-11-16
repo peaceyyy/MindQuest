@@ -1,4 +1,4 @@
-package com.mindquest.model;
+package com.mindquest.model.game;
 
 public class Player {
     private int hp;

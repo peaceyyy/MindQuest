@@ -1,6 +1,6 @@
 package com.mindquest.loader;
 
-import com.mindquest.model.Question;
+import com.mindquest.model.question.Question;
 import java.util.List;
 
 /**

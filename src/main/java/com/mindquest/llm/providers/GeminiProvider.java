@@ -1,6 +1,7 @@
 package com.mindquest.llm.providers;
 
 import com.mindquest.llm.*;
+import com.mindquest.llm.exception.LlmException;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;

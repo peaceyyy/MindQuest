@@ -1,6 +1,8 @@
-package com.mindquest.loader;
+package com.mindquest.loader.source;
 
-import com.mindquest.model.Question;
+import com.mindquest.loader.QuestionSource;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
 
 import java.io.IOException;

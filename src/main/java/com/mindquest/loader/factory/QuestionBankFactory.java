@@ -1,6 +1,9 @@
-package com.mindquest.loader;
+package com.mindquest.loader.factory;
 
-import com.mindquest.model.Question;
+import com.mindquest.loader.QuestionSource;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.loader.source.*;
+import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
 
 import java.util.List;
@@ -57,8 +60,7 @@ public class QuestionBankFactory {
                 return new CsvQuestionLoader();
             
             case GEMINI_API:
-                // TODO: Implement Gemini API loader
-                throw new UnsupportedOperationException("Gemini API loader not yet implemented");
+                return new GeminiQuestionSource();
             
             default:
                 return new HardcodedQuestionSource();
@@ -72,28 +74,6 @@ public class QuestionBankFactory {
     private static List<Question> getQuestionsFromHardcoded(String topic, String difficulty) {
         QuestionBank bank = new QuestionBank();
         return bank.getQuestionsByTopicAndDifficulty(topic, difficulty);
-    }
-
-    /**
-     * Maps Topic string to folder name in resources/questions/.
-     */
-    private static String getTopicFolder(String topic) {
-        // If already a short folder name, return as-is
-        if (topic.equals("cs") || topic.equals("ai") || topic.equals("philosophy")) {
-            return topic;
-        }
-        
-        // Map full names to folder names
-        switch (topic) {
-            case "Computer Science":
-                return "cs";
-            case "Artificial Intelligence":
-                return "ai";
-            case "Philosophy":
-                return "philosophy";
-            default:
-                return topic.toLowerCase();
-        }
     }
 
     /**

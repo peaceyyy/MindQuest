@@ -1,9 +1,11 @@
-package com.mindquest.loader;
+package com.mindquest.loader.source;
 
-import com.mindquest.model.EasyQuestion;
-import com.mindquest.model.HardQuestion;
-import com.mindquest.model.MediumQuestion;
-import com.mindquest.model.Question;
+import com.mindquest.loader.QuestionSource;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.model.question.EasyQuestion;
+import com.mindquest.model.question.HardQuestion;
+import com.mindquest.model.question.MediumQuestion;
+import com.mindquest.model.question.Question;
 
 import java.io.IOException;
 import java.nio.file.Files;

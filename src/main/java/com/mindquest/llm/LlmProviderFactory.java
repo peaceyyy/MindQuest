@@ -1,5 +1,7 @@
 package com.mindquest.llm;
 
+import com.mindquest.llm.exception.LlmException;
+
 /**
  * Factory interface for creating LlmProvider instances.
  * Implementations are discovered via Java ServiceLoader (SPI).

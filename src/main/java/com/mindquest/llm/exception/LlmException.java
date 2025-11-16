@@ -1,4 +1,4 @@
-package com.mindquest.llm;
+package com.mindquest.llm.exception;
 
 /**
  * Exception thrown by LLM providers.

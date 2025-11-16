@@ -1,10 +1,10 @@
 package com.mindquest.tests;
 
-import com.mindquest.loader.ExcelQuestionLoader;
-import com.mindquest.loader.JsonQuestionLoader;
+import com.mindquest.loader.source.ExcelQuestionLoader;
+import com.mindquest.loader.source.JsonQuestionLoader;
 import com.mindquest.loader.QuestionSource;
-import com.mindquest.loader.SourceConfig;
-import com.mindquest.model.Question;
+import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.model.question.Question;
 import java.util.List;
 
 /**
