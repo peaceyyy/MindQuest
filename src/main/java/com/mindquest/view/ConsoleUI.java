@@ -4,6 +4,7 @@ import com.mindquest.util.ColorUtils;
 import com.mindquest.util.ConsoleUtils;
 import com.mindquest.config.GameConfig;
 import com.mindquest.controller.InputHandler;
+import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 
@@ -108,7 +109,7 @@ public class ConsoleUI {
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
 
-    public static void displayQuestion(Player player, Question question, boolean hintUsed) {
+    public static void displayQuestion(Player player, Question question, boolean hintUsed, SourceConfig sourceConfig) {
         clearScreen();
         displayHUD(player);
         System.out.println("\n" + question.getQuestionText());
@@ -123,6 +124,9 @@ public class ConsoleUI {
         if (GameConfig.DEBUG) {
             System.out.println("\n[DEBUG] Correct Answer Index: " + (question.getCorrectIndex() + 1));
             System.out.println("[DEBUG] Question ID: " + question.getId());
+            if (sourceConfig != null) {
+                System.out.println("[DEBUG] Question Source: " + getSourceTypeName(sourceConfig.getType()));
+            }
         }
     }
 
@@ -214,5 +218,27 @@ public class ConsoleUI {
 
     public static void displayMessage(String message) {
         System.out.println(message);
+    }
+    
+    /**
+     * Helper method to get a human-readable name for the source type.
+     */
+    private static String getSourceTypeName(SourceConfig.SourceType sourceType) {
+        if (sourceType == null) return "Unknown";
+        
+        switch (sourceType) {
+            case BUILTIN_HARDCODED:
+                return "Built-in Hardcoded Questions";
+            case BUILTIN_JSON:
+                return "Built-in JSON Files";
+            case CUSTOM_CSV:
+                return "Custom CSV File";
+            case CUSTOM_EXCEL:
+                return "Custom Excel File";
+            case GEMINI_API:
+                return "Gemini AI Generated";
+            default:
+                return "Unknown Source";
+        }
     }
 }

@@ -186,7 +186,7 @@ public class GameController {
         boolean validAnswer = false;
         
         while (!validAnswer) {
-            ConsoleUI.displayQuestion(player, question, hintUsed);
+            ConsoleUI.displayQuestion(player, question, hintUsed, sessionManager.getSourceConfig());
             String input = InputHandler.getUserInput();
             
             // Check if user wants to use a hint
