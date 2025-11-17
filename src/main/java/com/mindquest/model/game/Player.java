@@ -58,10 +58,7 @@ public class Player {
         // Score is global and only resets with a new session (killing the terminal)
     }
 
-    /**
-     * Restore player state from a snapshot. Used to rollback provisional
-     * changes made during an aborted round.
-     */
+  
     public void restoreState(int hp, int score, int hints) {
         this.hp = Math.max(0, Math.min(MAX_HP, hp));
         this.score = score;

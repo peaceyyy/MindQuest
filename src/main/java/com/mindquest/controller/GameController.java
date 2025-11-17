@@ -1,6 +1,7 @@
 package com.mindquest.controller;
 
 import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.loader.config.MixedTopicsConfig;
 import com.mindquest.loader.TopicScanner;
 import com.mindquest.view.ConsoleUI;
 import com.mindquest.model.game.Player;
@@ -10,6 +11,7 @@ import com.mindquest.service.GameService;
 import com.mindquest.service.dto.AnswerResult;
 import com.mindquest.service.dto.RoundSummary;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class GameController {
@@ -17,6 +19,7 @@ public class GameController {
     private Player player;
     private QuestionBank questionBank;
     private GameService gameService;
+    private NavigationManager navigationManager;
     private boolean gameRunning;
     private boolean abortRound = false;
 
@@ -25,6 +28,7 @@ public class GameController {
         this.questionBank = new QuestionBank();
         this.sessionManager = new SessionManager(player, questionBank);
         this.gameService = new GameService(sessionManager, player, questionBank);
+        this.navigationManager = new NavigationManager();
         this.gameRunning = true;
     }
 
@@ -38,6 +42,7 @@ public class GameController {
     }
 
     private void showMainMenu() {
+        navigationManager.push(MenuId.MAIN_MENU, null);
         ConsoleUI.displayMainMenu(sessionManager.getGlobalPoints());
         int choice = InputHandler.getIntInput(1, 2);
         switch (choice) {
@@ -57,6 +62,13 @@ public class GameController {
         // First, let user select the question source
         showSourceMenu();
 
+        // Check if user went back from source menu
+        if (navigationManager.current().map(e -> e.getMenuId() == MenuId.MAIN_MENU).orElse(false)) {
+            return;
+        }
+
+        navigationManager.push(MenuId.TOPIC_MENU, null);
+
         // Get available topics based on selected source
         SourceConfig.SourceType selectedSource = sessionManager.getSourceConfig().getType();
         List<String> availableTopics = TopicScanner.getAvailableTopics(selectedSource);
@@ -65,17 +77,23 @@ public class GameController {
             ConsoleUI.displayMessage("\nNo topics found for the selected source!");
             ConsoleUI.displayMessage("Please add files to the appropriate directory.");
             try { Thread.sleep(2500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            navigationManager.pop(); 
             return;
         }
 
         // Display dynamic topic menu
         ConsoleUI.displayDynamicTopicMenu(availableTopics);
-        int choice = InputHandler.getIntInput(1, availableTopics.size() + 1);
+        Integer choice = InputHandler.getMenuChoice(1, availableTopics.size() + 1, true);
+
+        if (choice == null) {
+            
+            navigationManager.goBack();
+            return;
+        }
 
         if (choice == availableTopics.size() + 1) {
-            // Mixed Mode (coming soon)
-            ConsoleUI.displayMessage("\nMixed Mode coming soon!");
-            try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            // Mixed Mode
+            showMixedModeFlow(availableTopics);
         } else {
             // Valid topic selection
             String selectedTopic = availableTopics.get(choice - 1);
@@ -83,9 +101,133 @@ public class GameController {
         }
     }
 
+    /**
+     * Handles the Mixed Mode topic selection flow.
+     * Allows user to select up to 3 topics or choose "All topics".
+     */
+    private void showMixedModeFlow(List<String> availableTopics) {
+        navigationManager.push(MenuId.MIXED_TOPICS_SELECTION, null);
+        ConsoleUI.displayMessage("\n" + ConsoleUI.formatColor("========== MIXED TOPICS MODE ==========", "boldOrange"));
+        ConsoleUI.displayMessage("Select up to 3 topics to mix, or type 'ALL' for all topics.");
+        ConsoleUI.displayMessage("Enter topic numbers separated by commas (e.g., 1,2,3):\n");
+        
+        for (int i = 0; i < availableTopics.size(); i++) {
+            ConsoleUI.displayMessage((i + 1) + ". " + availableTopics.get(i));
+        }
+        ConsoleUI.displayMessage("\nType 'ALL' for all topics, or enter numbers (e.g., 1,2,3): ");
+        
+        String input = InputHandler.getUserInput().trim();
+        if (input.equalsIgnoreCase("BACK")) {
+            // Return to topic menu
+            navigationManager.goBack();
+            return;
+        }
+        List<String> selectedTopics = new ArrayList<>();
+        
+        if (input.equalsIgnoreCase("ALL")) {
+            // Use all available topics (limit to 3 for initial implementation)
+            int limit = Math.min(3, availableTopics.size());
+            selectedTopics.addAll(availableTopics.subList(0, limit));
+            ConsoleUI.displayMessage("\nSelected all topics (limited to first 3): " + selectedTopics);
+        } else {
+            // Parse comma-separated input
+            String[] parts = input.split(",");
+            for (String part : parts) {
+                try {
+                    int idx = Integer.parseInt(part.trim()) - 1;
+                    if (idx >= 0 && idx < availableTopics.size() && selectedTopics.size() < 3) {
+                        String topic = availableTopics.get(idx);
+                        if (!selectedTopics.contains(topic)) {
+                            selectedTopics.add(topic);
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    // Ignore invalid input
+                }
+            }
+        }
+        
+        if (selectedTopics.isEmpty()) {
+            ConsoleUI.displayMessage("\nNo valid topics selected. Returning to menu...");
+            try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            return;
+        }
+        
+        if (selectedTopics.size() > 3) {
+            ConsoleUI.displayMessage("\nToo many topics selected. Limited to first 3.");
+            selectedTopics = selectedTopics.subList(0, 3);
+        }
+        
+        ConsoleUI.displayMessage("\nMixed topics: " + selectedTopics);
+        try { Thread.sleep(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        
+        // Select difficulty for mixed round
+        showDifficultyMenuAndStartMixedRound(selectedTopics);
+    }
+
+    /**
+     * Shows difficulty menu and starts a mixed-topics round.
+     */
+    private void showDifficultyMenuAndStartMixedRound(List<String> selectedTopics) {
+        navigationManager.push(MenuId.MIXED_DIFFICULTY_MENU, selectedTopics);
+        ConsoleUI.displayDifficultyMenu();
+        Integer difficultyChoice = InputHandler.getMenuChoice(1, 3, true);
+
+        if (difficultyChoice == null) {
+            // BACK -> return to topic selection
+            navigationManager.goBack();
+            return;
+        }
+
+        String difficulty = "";
+        switch (difficultyChoice) {
+            case 1:
+                difficulty = "Easy";
+                break;
+            case 2:
+                difficulty = "Medium";
+                break;
+            case 3:
+                difficulty = "Hard";
+                break;
+        }
+        
+        // Build MixedTopicsConfig
+        MixedTopicsConfig config = new MixedTopicsConfig.Builder()
+            .selectedTopics(selectedTopics)
+            .maxTopics(3)
+            .mixingStrategy(MixedTopicsConfig.MixingStrategy.RANDOM)
+            .difficulty(difficulty)
+            .sourceConfig(sessionManager.getSourceConfig())
+            .questionsPerRound(5)
+            .perTopicLimit(3) // Max 3 questions per topic
+            .difficultyMode(MixedTopicsConfig.DifficultyMode.UNIFIED)
+            .build();
+        
+        // Start mixed round via SessionManager
+        sessionManager.startMixedTopicsRound(config);
+        
+        // Fail-fast: check if any questions were loaded before entering the game loop
+        if (sessionManager.getCurrentRoundQuestionCount() == 0) {
+            ConsoleUI.displayMessage("\nNo questions available for the selected topics and difficulty.");
+            ConsoleUI.displayMessage("Please ensure the selected source has questions for these topics/difficulty.");
+            try { Thread.sleep(2500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            return;
+        }
+        
+        playRound();
+    }
+
     private void showSourceMenu() {
+        navigationManager.push(MenuId.SOURCE_MENU, null);
         ConsoleUI.displaySourceMenu();
-        int choice = InputHandler.getIntInput(1, 5);
+        Integer choice = InputHandler.getMenuChoice(1, 5, true);
+
+        if (choice == null) {
+            // User typed BACK -> go to previous menu (MAIN_MENU)
+            navigationManager.goBack();
+            return;
+        }
 
         SourceConfig config = null;
 
@@ -133,8 +275,15 @@ public class GameController {
     }
 
     private void showDifficultyMenuAndStartRound(String topic) {
+        navigationManager.push(MenuId.DIFFICULTY_MENU, topic);
         ConsoleUI.displayDifficultyMenu();
-        int difficultyChoice = InputHandler.getIntInput(1, 3);
+        Integer difficultyChoice = InputHandler.getMenuChoice(1, 3, true);
+
+        if (difficultyChoice == null) {
+            // BACK -> return to topic menu
+            navigationManager.goBack();
+            return;
+        }
 
         String difficulty = "";
         switch (difficultyChoice) {
@@ -150,10 +299,20 @@ public class GameController {
         }
 
         gameService.startNewRound(topic, difficulty);
+        
+        // Fail-fast: check if any questions were loaded before entering the game loop
+        if (sessionManager.getCurrentRoundQuestionCount() == 0) {
+            ConsoleUI.displayMessage("\nNo questions available for " + topic + " - " + difficulty + ".");
+            ConsoleUI.displayMessage("Please ensure the selected source has questions for this topic/difficulty.");
+            try { Thread.sleep(2500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            return;
+        }
+        
         playRound();
     }
 
     private void playRound() {
+        navigationManager.push(MenuId.PLAY_ROUND, null);
         while (gameService.hasMoreQuestions() && player.getHp() > 0 && !abortRound) {
             Question currentQuestion = gameService.getCurrentQuestion();
             if (currentQuestion == null) {
@@ -173,11 +332,22 @@ public class GameController {
             gameService.rollbackRound();
             // Reset abort flag for subsequent rounds
             abortRound = false;
+            // Clear navigation stack back to main menu
+            navigationManager.clearToRoot();
             return;
         }
 
         // Reset abort flag for subsequent rounds
         abortRound = false;
+
+        // If the round had no questions (e.g., selected difficulty/source had none),
+        // do not award XP or consider the round completed — return to menu.
+        if (sessionManager.getCurrentRoundQuestionCount() == 0) {
+            ConsoleUI.displayMessage("\nNo questions were loaded for the selected topic/source/difficulty. Returning to main menu...");
+            try { Thread.sleep(1500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            navigationManager.clearToRoot();
+            return;
+        }
 
         if (player.getHp() > 0) {
             RoundSummary summary = gameService.completeRoundAndSummarize();
@@ -185,6 +355,9 @@ public class GameController {
         } else {
             handleFinalChance();
         }
+        
+        // Clear navigation back to main menu after round completes
+        navigationManager.clearToRoot();
     }
 
     private void handleQuestion(Question question, boolean isFinalChance) {

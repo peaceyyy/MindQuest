@@ -46,7 +46,7 @@ public class ConsoleUI {
         System.out.println(ColorUtils.yellow("1.") + " Computer Science");
         System.out.println(ColorUtils.yellow("2.") + " Artificial Intelligence");
         System.out.println(ColorUtils.yellow("3.") + " Philosophy");
-        System.out.println(ColorUtils.yellow("4.") + " Mixed Mode " + ColorUtils.orange("(Coming Soon)"));
+        System.out.println(ColorUtils.yellow("4.") + " Mixed Mode");
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
     
@@ -60,8 +60,8 @@ public class ConsoleUI {
             System.out.println(ColorUtils.yellow((i + 1) + ".") + " " + formatTopicName(topics.get(i)));
         }
         
-        // Always show Mixed Mode option at the end
-        System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Topics" + ColorUtils.orange("(Coming Soon)"));
+        // Mixed Mode option
+        System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Topics");
         
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
@@ -112,6 +112,12 @@ public class ConsoleUI {
     public static void displayQuestion(Player player, Question question, boolean hintUsed, SourceConfig sourceConfig) {
         clearScreen();
         displayHUD(player);
+        
+        // Display topic tag if available
+        if (question.getTopic() != null && !question.getTopic().isEmpty()) {
+            System.out.println(ColorUtils.orange("[Topic: " + formatTopicName(question.getTopic()) + "]"));
+        }
+        
         System.out.println("\n" + question.getQuestionText());
         List<String> choicesToDisplay = hintUsed ? question.removeIncorrectOptions() : question.getChoices();
 
@@ -219,6 +225,24 @@ public class ConsoleUI {
 
     public static void displayMessage(String message) {
         System.out.println(message);
+    }
+    
+    /**
+     * Formats a string with the specified color using ColorUtils.
+     */
+    public static String formatColor(String text, String colorName) {
+        switch (colorName.toLowerCase()) {
+            case "boldorange":
+                return ColorUtils.boldOrange(text);
+            case "boldyellow":
+                return ColorUtils.boldYellow(text);
+            case "orange":
+                return ColorUtils.orange(text);
+            case "yellow":
+                return ColorUtils.yellow(text);
+            default:
+                return text;
+        }
     }
     
     /**

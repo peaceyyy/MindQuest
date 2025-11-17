@@ -2,6 +2,7 @@ package com.mindquest.controller;
 
 import com.mindquest.loader.factory.QuestionBankFactory;
 import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.loader.config.MixedTopicsConfig;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 public class SessionManager {
@@ -53,6 +55,91 @@ public class SessionManager {
         player.resetForRound();
         loadQuestionsForRound(topic, difficulty);
         currentQuestionIndex = 0;
+    }
+
+    /**
+     * Starts a mixed-topics round using the provided configuration.
+     * Loads questions from multiple topics using a unified source and merges them.
+     */
+    public void startMixedTopicsRound(MixedTopicsConfig config) {
+        this.currentTopic = "Mixed Topics";
+        this.currentDifficulty = config.getDifficultyMode() == MixedTopicsConfig.DifficultyMode.UNIFIED 
+            ? "mixed" : "varied";
+        player.resetForRound();
+        loadMixedQuestionsForRound(config);
+        currentQuestionIndex = 0;
+    }
+
+    /**
+     * Loads and merges questions from multiple topics based on MixedTopicsConfig.
+     */
+    private void loadMixedQuestionsForRound(MixedTopicsConfig config) {
+        List<String> selectedTopics = config.getSelectedTopics();
+        SourceConfig sourceConfig = config.getSourceConfig();
+        String difficulty = config.getDifficulty();
+        int questionsPerRound = config.getQuestionsPerRound();
+        int perTopicLimit = config.getPerTopicLimit();
+        
+        // Collect all questions from each topic
+        List<Question> allQuestions = new ArrayList<>();
+        Set<String> seenQuestionTexts = new HashSet<>();
+        
+        for (String topic : selectedTopics) {
+            List<Question> topicQuestions;
+            
+            if (sourceConfig != null) {
+                // Build a config with topic and difficulty for this topic
+                SourceConfig roundConfig = new SourceConfig.Builder()
+                    .type(sourceConfig.getType())
+                    .topic(topic)
+                    .difficulty(difficulty)
+                    .filePath(sourceConfig.getFilePath())
+                    .extraParams(sourceConfig.getExtraParams())
+                    .build();
+                
+                topicQuestions = QuestionBankFactory.getQuestions(roundConfig);
+            } else {
+                // Fallback to hardcoded QuestionBank
+                topicQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
+            }
+            
+            if (topicQuestions == null || topicQuestions.isEmpty()) {
+                System.out.println("[MixedMode] No questions available for topic: " + topic);
+                continue;
+            }
+            
+            // Filter out duplicates and already-used questions
+            List<Question> freshQuestions = new ArrayList<>();
+            for (Question q : topicQuestions) {
+                String normalizedText = q.getQuestionText().trim().toLowerCase();
+                if (!usedQuestionIds.contains(q.getId()) && !seenQuestionTexts.contains(normalizedText)) {
+                    freshQuestions.add(q);
+                    seenQuestionTexts.add(normalizedText);
+                }
+            }
+            
+            // Apply per-topic limit
+            Collections.shuffle(freshQuestions);
+            int limit = Math.min(perTopicLimit, freshQuestions.size());
+            allQuestions.addAll(freshQuestions.subList(0, limit));
+        }
+        
+        // Apply mixing strategy (RANDOM by default)
+        Random rng = new Random(config.getSeed());
+        Collections.shuffle(allQuestions, rng);
+        
+        // Select questionsPerRound from merged pool
+        currentRoundQuestions.clear();
+        int count = Math.min(questionsPerRound, allQuestions.size());
+        for (int i = 0; i < count; i++) {
+            Question q = allQuestions.get(i);
+            currentRoundQuestions.add(q);
+            usedQuestionIds.add(q.getId());
+        }
+        
+        if (currentRoundQuestions.isEmpty()) {
+            System.out.println("[MixedMode] No questions available for mixed round!");
+        }
     }
 
     private void loadQuestionsForRound(String topic, String difficulty) {
@@ -136,5 +223,12 @@ public class SessionManager {
         currentTopic = null;
         currentDifficulty = null;
         globalPoints = 0; // Reset global points when session fully resets
+    }
+
+    /**
+     * Returns the number of questions loaded for the current round.
+     */
+    public int getCurrentRoundQuestionCount() {
+        return currentRoundQuestions == null ? 0 : currentRoundQuestions.size();
     }
 }
