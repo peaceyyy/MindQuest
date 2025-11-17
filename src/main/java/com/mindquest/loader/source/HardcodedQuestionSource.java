@@ -20,7 +20,6 @@ public class HardcodedQuestionSource implements QuestionSource {
         String topic = config.getTopic();
         String difficulty = config.getDifficulty();
         
-        // QuestionBank expects format like "Computer Science_Easy"
         return bank.getQuestionsByTopicAndDifficulty(topic, difficulty);
     }
     

@@ -8,7 +8,7 @@ public class Main {
         try {
             gameController.startGame();
         } catch (IllegalStateException e) {
-            // Likely EOF on System.in (non-interactive run). Exit gracefully.
+          
             System.out.println("Input stream closed. Exiting.");
         }
     }

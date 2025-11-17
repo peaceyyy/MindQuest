@@ -3,10 +3,6 @@ package com.mindquest.loader.config;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Configuration DTO for loading questions from different sources.
- * Provides all necessary parameters for any QuestionSource implementation.
- */
 public class SourceConfig {
     
     public enum SourceType {
@@ -57,7 +53,7 @@ public class SourceConfig {
         return extraParams.get(key);
     }
     
-    // Builder pattern for flexible configuration
+
     public static class Builder {
         private SourceType type = SourceType.BUILTIN_HARDCODED;
         private String topic = "";

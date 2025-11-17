@@ -1,9 +1,6 @@
 package com.mindquest.service.dto;
 
-/**
- * Result of submitting an answer to the game logic.
- * Kept minimal so UI can render its own messages.
- */
+
 public class AnswerResult {
     private final boolean correct;
     private final int pointsAwarded;

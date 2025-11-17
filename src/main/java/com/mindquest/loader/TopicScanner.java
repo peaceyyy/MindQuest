@@ -15,10 +15,7 @@ public class TopicScanner {
     private static final String CSV_BASE_PATH = "src/questions/external_source/csv/";
     private static final String XLSX_BASE_PATH = "src/questions/external_source/xlsx/";
     
-    /**
-     * Scans directories for available topics based on the selected source type.
-     * Returns a sorted list of unique topic names (without extensions).
-     */
+
     public static List<String> getAvailableTopics(SourceConfig.SourceType sourceType) {
         Set<String> topics = new HashSet<>();
         
@@ -97,8 +94,7 @@ public class TopicScanner {
     }
     
     /**
-     * Returns the full file path for a given topic and source type.
-     * Used by loaders to construct file paths dynamically.
+     * Returns the full file path for a given topic and source type. Used by loaders under the loader/ folder
      */
     public static String getTopicFilePath(String topic, SourceConfig.SourceType sourceType) {
         switch (sourceType) {

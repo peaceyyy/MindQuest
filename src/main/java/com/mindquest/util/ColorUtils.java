@@ -1,7 +1,6 @@
 package com.mindquest.util;
 
 public class ColorUtils {
-    // ANSI color codes
     public static final String RESET = "\u001B[0m";
     public static final String ORANGE = "\u001B[38;5;214m";  // Bright orange
     public static final String YELLOW = "\u001B[33m";         // Yellow

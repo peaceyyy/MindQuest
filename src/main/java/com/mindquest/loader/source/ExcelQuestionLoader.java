@@ -36,7 +36,6 @@ public class ExcelQuestionLoader implements QuestionSource {
         String topic = config.getTopic();
         String difficulty = config.getDifficulty();
         
-        // Use TopicScanner to get file path (supports both old hardcoded names and dynamic filenames)
         String filePath = TopicScanner.getTopicFilePath(getTopicFileName(topic), SourceConfig.SourceType.CUSTOM_EXCEL);
         
         System.out.println("[Excel Loader] Loading from: " + filePath);
@@ -64,12 +63,10 @@ public class ExcelQuestionLoader implements QuestionSource {
     private static String getTopicFileName(String topic) {
         if (topic == null) return "unknown";
         
-        // If already a short code (lowercase, no spaces), assume it's a filename
         if (topic.equals(topic.toLowerCase()) && !topic.contains(" ")) {
             return topic;
         }
         
-        // Map full names to short codes
         switch (topic.toLowerCase()) {
             case "artificial intelligence":
                 return "ai";
@@ -93,12 +90,10 @@ public class ExcelQuestionLoader implements QuestionSource {
     private static List<Question> loadQuestionsFromFile(String filePath, String difficulty) throws IOException {
         List<Question> allQuestions = loadQuestions(filePath);
         
-        // If no difficulty filter, return all questions
         if (difficulty == null || difficulty.isEmpty()) {
             return allQuestions;
         }
         
-        // Filter by difficulty
         List<Question> filtered = new ArrayList<>();
         for (Question q : allQuestions) {
             if (matchesDifficulty(q, difficulty)) {
@@ -134,18 +129,15 @@ public class ExcelQuestionLoader implements QuestionSource {
     public static List<Question> loadQuestions(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         
-        // Try to load from classpath first (for JAR), then from file system (for development)
         InputStream inputStream = getInputStream(filePath);
         
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             
-            Sheet sheet = workbook.getSheetAt(0); // Read first sheet
+            Sheet sheet = workbook.getSheetAt(0);
             
-            // Skip header row (row 0)
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null || isRowEmpty(row)) {
-                    continue; // Skip empty rows
                 }
                 
                 try {
@@ -170,17 +162,14 @@ public class ExcelQuestionLoader implements QuestionSource {
      * Gets an InputStream for the Excel file, trying classpath first, then file system.
      */
     private static InputStream getInputStream(String filePath) throws IOException {
-        // Convert path to classpath format (e.g., "src/questions/..." -> "questions/...")
         String classpathPath = filePath.replace("src/", "");
         
-        // Try classpath resource first (for JAR)
         InputStream is = ExcelQuestionLoader.class.getClassLoader().getResourceAsStream(classpathPath);
         if (is != null) {
             System.out.println("[Excel Loader] Loading from classpath: " + classpathPath);
             return is;
         }
         
-        // Fall back to file system (for development)
         System.out.println("[Excel Loader] Loading from file system: " + filePath);
         return new FileInputStream(filePath);
     }
@@ -195,7 +184,6 @@ public class ExcelQuestionLoader implements QuestionSource {
             String difficulty = getCellValueAsString(row.getCell(1));
             String questionText = getCellValueAsString(row.getCell(2));
             
-            // Read choices (choice0, choice1, choice2, choice3)
             List<String> choices = new ArrayList<>();
             for (int i = 3; i <= 6; i++) {
                 Cell cell = row.getCell(i);
@@ -207,18 +195,14 @@ public class ExcelQuestionLoader implements QuestionSource {
                 }
             }
             
-            // Read correct index
             int correctIndex = (int) getCellValueAsNumber(row.getCell(7));
             
-            // Validate required fields
             if (questionText.isEmpty() || choices.isEmpty()) {
                 return null;
             }
             
-            // Generate unique ID
             String id = generateQuestionId(difficulty);
             
-            // Create appropriate Question subclass based on difficulty
             switch (difficulty.toLowerCase()) {
                 case "easy":
                     return new EasyQuestion(id, questionText, choices, correctIndex, topic);
@@ -248,7 +232,6 @@ public class ExcelQuestionLoader implements QuestionSource {
             case STRING:
                 return cell.getStringCellValue().trim();
             case NUMERIC:
-                // Handle numeric values (convert to string without decimals if whole number)
                 double numValue = cell.getNumericCellValue();
                 if (numValue == Math.floor(numValue)) {
                     return String.valueOf((int) numValue);
@@ -257,7 +240,6 @@ public class ExcelQuestionLoader implements QuestionSource {
             case BOOLEAN:
                 return String.valueOf(cell.getBooleanCellValue());
             case FORMULA:
-                // Evaluate formula and return result
                 return cell.getStringCellValue();
             case BLANK:
                 return "";

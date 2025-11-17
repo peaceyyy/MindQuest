@@ -14,7 +14,6 @@ public class InputHandler {
         return line.trim();
     }
 
-    // For "Press Enter to continue" prompts 
     public static void waitForEnter() {
         try {
             // Small delay to prevent accidental double-press from previous input
@@ -41,16 +40,11 @@ public class InputHandler {
                     validInput = true;
                 } else {
                     System.out.println("Input out of range. Please enter a number between " + min + " and " + max + ".");
-                    Thread.sleep(1000); 
-
+                    Thread.sleep(1000);
                 }
             } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a number.");
-                try {
-                    Thread.sleep(1000); // Pause to let user read message
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
+                try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

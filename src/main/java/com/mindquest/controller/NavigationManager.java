@@ -51,8 +51,8 @@ public class NavigationManager {
      * @return The previous menu (now current), or empty if we're at the root
      */
     public Optional<MenuEntry> goBack() {
-        pop(); // Remove current
-        return current(); // Return the new current (previous menu)
+        pop();
+        return current();
     }
 
     /**

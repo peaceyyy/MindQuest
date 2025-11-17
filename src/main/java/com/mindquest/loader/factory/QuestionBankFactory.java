@@ -9,9 +9,8 @@ import com.mindquest.model.QuestionBank;
 import java.util.List;
 
 /**
- * Factory for loading questions from various sources.
  * Supports: Hardcoded QuestionBank, JSON files, CSV files, Excel files, and Gemini API.
- * Uses QuestionSource interface for unified loading.
+ * Uses QuestionSource interface for unified loading
  */
 public class QuestionBankFactory {
 
@@ -43,7 +42,7 @@ public class QuestionBankFactory {
     }
     
     /**
-     * Creates the appropriate QuestionSource implementation based on source type.
+     * Creates the appropriate question loader based on source type.
      */
     private static QuestionSource createLoader(SourceConfig.SourceType type) {
         switch (type) {
@@ -67,25 +66,17 @@ public class QuestionBankFactory {
         }
     }
 
-    /**
-     * Loads questions from the original hardcoded QuestionBank.
-     * Used for fallback when other loaders fail.
-     */
+  
     private static List<Question> getQuestionsFromHardcoded(String topic, String difficulty) {
         QuestionBank bank = new QuestionBank();
         return bank.getQuestionsByTopicAndDifficulty(topic, difficulty);
     }
 
-    /**
-     * Gets the current default mode for backward compatibility.
-     */
+   
     public static String getCurrentMode() {
         return "Question Loading Mode: " + DEFAULT_MODE.toString();
     }
-    
-    /**
-     * Sets the default mode for backward compatibility.
-     */
+ 
     public static void setDefaultMode(SourceConfig.SourceType mode) {
         DEFAULT_MODE = mode;
     }

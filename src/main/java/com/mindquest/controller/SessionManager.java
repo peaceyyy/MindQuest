@@ -23,7 +23,7 @@ public class SessionManager {
     private String currentDifficulty;
     private int currentQuestionIndex;
     private int globalPoints;
-    private SourceConfig sourceConfig; // Current source configuration
+    private SourceConfig sourceConfig;
 
     public SessionManager(Player player, QuestionBank questionBank) {
         this.player = player;
@@ -32,7 +32,7 @@ public class SessionManager {
         this.currentRoundQuestions = new ArrayList<>();
         this.currentQuestionIndex = 0;
         this.globalPoints = 0;
-        this.sourceConfig = null; // No source config by default (uses hardcoded)
+        this.sourceConfig = null;
     }
     
     /**
@@ -80,7 +80,6 @@ public class SessionManager {
         int questionsPerRound = config.getQuestionsPerRound();
         int perTopicLimit = config.getPerTopicLimit();
         
-        // Collect all questions from each topic
         List<Question> allQuestions = new ArrayList<>();
         Set<String> seenQuestionTexts = new HashSet<>();
         
@@ -88,7 +87,7 @@ public class SessionManager {
             List<Question> topicQuestions;
             
             if (sourceConfig != null) {
-                // Build a config with topic and difficulty for this topic
+                
                 SourceConfig roundConfig = new SourceConfig.Builder()
                     .type(sourceConfig.getType())
                     .topic(topic)
@@ -99,7 +98,6 @@ public class SessionManager {
                 
                 topicQuestions = QuestionBankFactory.getQuestions(roundConfig);
             } else {
-                // Fallback to hardcoded QuestionBank
                 topicQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
             }
             
@@ -108,7 +106,6 @@ public class SessionManager {
                 continue;
             }
             
-            // Filter out duplicates and already-used questions
             List<Question> freshQuestions = new ArrayList<>();
             for (Question q : topicQuestions) {
                 String normalizedText = q.getQuestionText().trim().toLowerCase();
@@ -118,17 +115,13 @@ public class SessionManager {
                 }
             }
             
-            // Apply per-topic limit
             Collections.shuffle(freshQuestions);
             int limit = Math.min(perTopicLimit, freshQuestions.size());
             allQuestions.addAll(freshQuestions.subList(0, limit));
         }
-        
-        // Apply mixing strategy (RANDOM by default)
         Random rng = new Random(config.getSeed());
         Collections.shuffle(allQuestions, rng);
         
-        // Select questionsPerRound from merged pool
         currentRoundQuestions.clear();
         int count = Math.min(questionsPerRound, allQuestions.size());
         for (int i = 0; i < count; i++) {
@@ -145,9 +138,9 @@ public class SessionManager {
     private void loadQuestionsForRound(String topic, String difficulty) {
         List<Question> availableQuestions;
         
-        // Use QuestionBankFactory with SourceConfig if available
+        
         if (sourceConfig != null) {
-            // Build a config with topic and difficulty for this round
+            
             SourceConfig roundConfig = new SourceConfig.Builder()
                 .type(sourceConfig.getType())
                 .topic(topic)
@@ -158,7 +151,6 @@ public class SessionManager {
             
             availableQuestions = QuestionBankFactory.getQuestions(roundConfig);
         } else {
-            // Fallback to hardcoded QuestionBank
             availableQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
         }
         if (availableQuestions == null || availableQuestions.isEmpty()) {
@@ -166,7 +158,6 @@ public class SessionManager {
             return;
         }
 
-        // Filter out already used questions (if any, though for a new round, this set should be empty)
         List<Question> freshQuestions = new ArrayList<>();
         for (Question q : availableQuestions) {
             if (!usedQuestionIds.contains(q.getId())) {
@@ -176,11 +167,10 @@ public class SessionManager {
 
         Collections.shuffle(freshQuestions);
 
-        // Select 5 questions for the round, or fewer if not enough fresh questions
         currentRoundQuestions.clear();
         for (int i = 0; i < Math.min(5, freshQuestions.size()); i++) {
             currentRoundQuestions.add(freshQuestions.get(i));
-            usedQuestionIds.add(freshQuestions.get(i).getId()); // Mark as used for this session
+            usedQuestionIds.add(freshQuestions.get(i).getId());
         }
     }
 
@@ -216,13 +206,13 @@ public class SessionManager {
     }
 
     public void resetSession() {
-        player = new Player(); // Completely reset player state
-        usedQuestionIds.clear(); // Clear all used questions
+        player = new Player();
+        usedQuestionIds.clear();
         currentRoundQuestions.clear();
         currentQuestionIndex = 0;
         currentTopic = null;
         currentDifficulty = null;
-        globalPoints = 0; // Reset global points when session fully resets
+        globalPoints = 0;
     }
 
     /**

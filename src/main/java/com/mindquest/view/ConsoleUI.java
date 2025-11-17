@@ -4,6 +4,7 @@ import com.mindquest.util.ColorUtils;
 import com.mindquest.util.ConsoleUtils;
 import com.mindquest.config.GameConfig;
 import com.mindquest.controller.InputHandler;
+import com.mindquest.controller.MenuId;
 import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
@@ -23,7 +24,7 @@ public class ConsoleUI {
         System.out.println(ColorUtils.boldOrange("*****************************************"));
         System.out.println(ColorUtils.yellow("\nPrepare to test your knowledge!"));
         System.out.println("\nPress Enter to continue...");
-        InputHandler.waitForEnter(); // Use debounced input
+        InputHandler.waitForEnter();
     }
 
     public static void displayMainMenu(int globalPoints) {
@@ -60,7 +61,6 @@ public class ConsoleUI {
             System.out.println(ColorUtils.yellow((i + 1) + ".") + " " + formatTopicName(topics.get(i)));
         }
         
-        // Mixed Mode option
         System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Topics");
         
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
@@ -70,11 +70,9 @@ public class ConsoleUI {
      * Formats topic names for display (converts lowercase filenames to Title Case).
      */
     private static String formatTopicName(String topic) {
-        // Special case mappings
         if (topic.equals("cs")) return "Computer Science";
         if (topic.equals("ai")) return "Artificial Intelligence";
         
-        // Convert to title case (e.g., "philosophy" -> "Philosophy")
         if (topic.isEmpty()) return topic;
         return topic.substring(0, 1).toUpperCase() + topic.substring(1).toLowerCase();
     }
@@ -113,7 +111,6 @@ public class ConsoleUI {
         clearScreen();
         displayHUD(player);
         
-        // Display topic tag if available
         if (question.getTopic() != null && !question.getTopic().isEmpty()) {
             System.out.println(ColorUtils.orange("[Topic: " + formatTopicName(question.getTopic()) + "]"));
         }
@@ -181,7 +178,7 @@ public class ConsoleUI {
         System.out.println(ColorUtils.boldOrange("*****************************************"));
         System.out.println("\nYour HP dropped to zero.");
         System.out.println("Press Enter to continue...");
-        InputHandler.waitForEnter(); // Use debounced input
+        InputHandler.waitForEnter();
     }
 
     public static void displayRoundVictory(int roundScore, int globalPoints) {
@@ -193,7 +190,7 @@ public class ConsoleUI {
         System.out.println(ColorUtils.boldYellow("Round Score: ") + ColorUtils.orange(String.valueOf(roundScore)));
         System.out.println(ColorUtils.boldYellow("Total Points: ") + ColorUtils.orange(String.valueOf(globalPoints)));
         System.out.println("Press Enter to continue...");
-        InputHandler.waitForEnter(); // Use debounced input
+        InputHandler.waitForEnter();
     }
 
     public static void displayFinalChancePrompt() {
@@ -203,7 +200,7 @@ public class ConsoleUI {
         System.out.println(ColorUtils.boldOrange("*****************************************"));
         System.out.println(ColorUtils.yellow("\nYour HP is at zero! One last question to regain some HP."));
         System.out.println("Press Enter to continue...");
-        InputHandler.waitForEnter(); // Use debounced input
+        InputHandler.waitForEnter();
     }
 
     public static void displayExitConfirmation() {
@@ -240,14 +237,25 @@ public class ConsoleUI {
                 return ColorUtils.orange(text);
             case "yellow":
                 return ColorUtils.yellow(text);
+            case "gray":
+                return "\u001B[90m" + text + "\u001B[0m";
             default:
                 return text;
         }
     }
-    
+
     /**
-     * Helper method to get a human-readable name for the source type.
+     * Display navigation debug info
+     * Enable with: java -Dmindquest.debug.navigation=true -jar ...
      */
+    public static void displayNavigationDebug(MenuId current, MenuId backDestination) {
+        if (Boolean.getBoolean("mindquest.debug.navigation")) {
+            System.out.println(formatColor("[DEBUG NAV] Current: " + current + " | BACK → " + 
+                (backDestination != null ? backDestination : "(exit program)"), "gray"));
+        }
+    }
+    
+
     private static String getSourceTypeName(SourceConfig.SourceType sourceType) {
         if (sourceType == null) return "Unknown";
         

@@ -10,7 +10,7 @@ public class ConsoleUtils {
                 Runtime.getRuntime().exec("clear");
             }
         } catch (final Exception e) {
-            System.out.println("\n".repeat(50)); // fallback
+            System.out.println("\n".repeat(50));
         }
     }
 }

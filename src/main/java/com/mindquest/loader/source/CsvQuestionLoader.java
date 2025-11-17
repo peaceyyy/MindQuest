@@ -34,7 +34,6 @@ public class CsvQuestionLoader implements QuestionSource {
         String topic = config.getTopic();
         String difficulty = config.getDifficulty();
         
-        // Use TopicScanner to get file path (supports both old hardcoded names and dynamic filenames)
         String filePath = TopicScanner.getTopicFilePath(getTopicFileName(topic), SourceConfig.SourceType.CUSTOM_CSV);
         
         System.out.println("[CSV Loader] Loading from: " + filePath);
@@ -62,12 +61,10 @@ public class CsvQuestionLoader implements QuestionSource {
     private static String getTopicFileName(String topic) {
         if (topic == null) return "unknown";
         
-        // If already a short code (lowercase, no spaces), assume it's a filename
         if (topic.equals(topic.toLowerCase()) && !topic.contains(" ")) {
             return topic;
         }
         
-        // Map full names to short codes
         switch (topic.toLowerCase()) {
             case "artificial intelligence":
                 return "ai";
@@ -91,12 +88,10 @@ public class CsvQuestionLoader implements QuestionSource {
     private static List<Question> loadQuestionsFromFile(String filePath, String difficulty) throws IOException {
         List<Question> allQuestions = loadQuestions(filePath);
         
-        // If no difficulty filter, return all questions
         if (difficulty == null || difficulty.isEmpty()) {
             return allQuestions;
         }
         
-        // Filter by difficulty
         List<Question> filtered = new ArrayList<>();
         for (Question q : allQuestions) {
             if (matchesDifficulty(q, difficulty)) {
@@ -131,17 +126,14 @@ public class CsvQuestionLoader implements QuestionSource {
     public static List<Question> loadQuestions(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         
-        // Try to load from classpath first (for JAR), then from file system (for development)
         java.io.Reader reader = getReader(filePath);
         
         try (CSVReader csvReader = new CSVReader(reader)) {
             List<String[]> rows = csvReader.readAll();
             
-            // Skip header row (first row)
             for (int i = 1; i < rows.size(); i++) {
                 String[] row = rows.get(i);
                 
-                // Skip empty rows
                 if (row == null || row.length == 0 || isRowEmpty(row)) {
                     continue;
                 }
@@ -166,17 +158,14 @@ public class CsvQuestionLoader implements QuestionSource {
      * Gets a Reader for the CSV file, trying classpath first, then file system.
      */
     private static java.io.Reader getReader(String filePath) throws IOException {
-        // Convert path to classpath format (e.g., "src/questions/..." -> "questions/...")
         String classpathPath = filePath.replace("src/", "");
         
-        // Try classpath resource first (for JAR)
         java.io.InputStream is = CsvQuestionLoader.class.getClassLoader().getResourceAsStream(classpathPath);
         if (is != null) {
             System.out.println("[CSV Loader] Loading from classpath: " + classpathPath);
             return new java.io.InputStreamReader(is);
         }
         
-        // Fall back to file system (for development)
         System.out.println("[CSV Loader] Loading from file system: " + filePath);
         return new FileReader(filePath);
     }
@@ -196,7 +185,6 @@ public class CsvQuestionLoader implements QuestionSource {
             String difficulty = row[1].trim();
             String questionText = row[2].trim();
             
-            // Read choices (choice0, choice1, choice2, choice3)
             List<String> choices = new ArrayList<>();
             for (int i = 3; i <= 6; i++) {
                 if (i < row.length && !row[i].trim().isEmpty()) {
@@ -204,18 +192,14 @@ public class CsvQuestionLoader implements QuestionSource {
                 }
             }
             
-            // Read correct index
             int correctIndex = Integer.parseInt(row[7].trim());
             
-            // Validate required fields
             if (questionText.isEmpty() || choices.isEmpty()) {
                 return null;
             }
             
-            // Generate unique ID
             String id = generateQuestionId(difficulty);
             
-            // Create appropriate Question subclass based on difficulty
             switch (difficulty.toLowerCase()) {
                 case "easy":
                     return new EasyQuestion(id, questionText, choices, correctIndex, topic);

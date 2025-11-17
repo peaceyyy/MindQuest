@@ -32,7 +32,6 @@ public class JsonQuestionLoader implements QuestionSource {
         String topic = config.getTopic();
         String difficulty = config.getDifficulty();
         
-        // Convert topic to folder name if needed
         String topicFolder = getTopicFolder(topic);
         
         return loadQuestions(topicFolder, difficulty.toLowerCase());
@@ -60,14 +59,12 @@ public class JsonQuestionLoader implements QuestionSource {
     private static List<Question> parseJson(String jsonContent, String difficulty) {
         List<Question> questions = new ArrayList<>();
         
-        // Extract the questions array from the JSON
         int questionsStart = jsonContent.indexOf("\"questions\":");
         int arrayStart = jsonContent.indexOf("[", questionsStart);
         int arrayEnd = jsonContent.lastIndexOf("]");
         
         String questionsArray = jsonContent.substring(arrayStart + 1, arrayEnd).trim();
         
-        // Split into individual question objects
         List<String> questionObjects = splitQuestionObjects(questionsArray);
         
         for (String questionJson : questionObjects) {
@@ -117,10 +114,8 @@ public class JsonQuestionLoader implements QuestionSource {
             String[] choices = extractArrayValues(questionJson, "choices");
             int correctIndex = extractIntValue(questionJson, "correctIndex");
             
-            // Generate a unique ID (simple sequential approach)
             String id = generateQuestionId(difficulty);
             
-            // Create appropriate Question subclass based on difficulty
             List<String> choicesList = Arrays.asList(choices);
             
             switch (difficulty.toLowerCase()) {
@@ -166,7 +161,6 @@ public class JsonQuestionLoader implements QuestionSource {
         
         String arrayContent = json.substring(arrayStart, arrayEnd);
         
-        // Split by comma and clean up quotes
         String[] rawValues = arrayContent.split("\",\\s*\"");
         String[] cleanValues = new String[rawValues.length];
         
@@ -195,7 +189,6 @@ public class JsonQuestionLoader implements QuestionSource {
         return Integer.parseInt(json.substring(start, end).trim());
     }
 
-    // Simple counter for generating unique IDs
     private static int questionCounter = 1;
     
     private static String generateQuestionId(String difficulty) {
@@ -207,12 +200,10 @@ public class JsonQuestionLoader implements QuestionSource {
      * Handles both full names and abbreviated folder names.
      */
     private static String getTopicFolder(String topic) {
-        // If already a short folder name, return as-is
         if (topic.equals("cs") || topic.equals("ai") || topic.equals("philosophy")) {
             return topic;
         }
         
-        // Map full names to folder names
         switch (topic) {
             case "Computer Science":
                 return "cs";
@@ -221,7 +212,7 @@ public class JsonQuestionLoader implements QuestionSource {
             case "Philosophy":
                 return "philosophy";
             default:
-                return topic.toLowerCase(); // FallbackW
+                return topic.toLowerCase();
         }
     }
 }

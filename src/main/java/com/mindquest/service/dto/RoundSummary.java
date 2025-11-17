@@ -1,8 +1,6 @@
 package com.mindquest.service.dto;
 
-/**
- * Summary returned when a round completes.
- */
+
 public class RoundSummary {
     private final int hpBonus;
     private final int roundScore;
