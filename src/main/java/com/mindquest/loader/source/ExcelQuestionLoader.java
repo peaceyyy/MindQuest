@@ -134,8 +134,10 @@ public class ExcelQuestionLoader implements QuestionSource {
     public static List<Question> loadQuestions(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         
-        try (InputStream fis = new FileInputStream(filePath);
-             Workbook workbook = new XSSFWorkbook(fis)) {
+        // Try to load from classpath first (for JAR), then from file system (for development)
+        InputStream inputStream = getInputStream(filePath);
+        
+        try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             
             Sheet sheet = workbook.getSheetAt(0); // Read first sheet
             
@@ -155,9 +157,32 @@ public class ExcelQuestionLoader implements QuestionSource {
                     System.err.println("Error parsing row " + (i + 1) + ": " + e.getMessage());
                 }
             }
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
         }
         
         return questions;
+    }
+    
+    /**
+     * Gets an InputStream for the Excel file, trying classpath first, then file system.
+     */
+    private static InputStream getInputStream(String filePath) throws IOException {
+        // Convert path to classpath format (e.g., "src/questions/..." -> "questions/...")
+        String classpathPath = filePath.replace("src/", "");
+        
+        // Try classpath resource first (for JAR)
+        InputStream is = ExcelQuestionLoader.class.getClassLoader().getResourceAsStream(classpathPath);
+        if (is != null) {
+            System.out.println("[Excel Loader] Loading from classpath: " + classpathPath);
+            return is;
+        }
+        
+        // Fall back to file system (for development)
+        System.out.println("[Excel Loader] Loading from file system: " + filePath);
+        return new FileInputStream(filePath);
     }
 
     /**

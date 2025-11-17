@@ -62,6 +62,22 @@
     </dependencies>
 
     <build>
+        <!-- Include questions directory as a resource -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/questions</directory>
+                <targetPath>questions</targetPath>
+                <includes>
+                    <include>**/*.json</include>
+                    <include>**/*.csv</include>
+                    <include>**/*.xlsx</include>
+                </includes>
+            </resource>
+        </resources>
+        
         <plugins>
             <!-- Ensure proper Java compilation level -->
             <plugin>

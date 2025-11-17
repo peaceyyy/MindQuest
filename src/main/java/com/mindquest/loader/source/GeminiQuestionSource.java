@@ -16,6 +16,9 @@ import com.mindquest.model.question.EasyQuestion;
 import com.mindquest.model.question.HardQuestion;
 import com.mindquest.model.question.MediumQuestion;
 import com.mindquest.model.question.Question;
+import com.mindquest.loader.source.GeminiFallbackStatus;
+import com.mindquest.loader.source.JsonQuestionLoader;
+import com.mindquest.model.QuestionBank;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,9 +51,34 @@ public class GeminiQuestionSource implements QuestionSource {
         int questionCount = getQuestionCount(config);
         
         try {
+            // Clear previous fallback state for a fresh attempt
+            GeminiFallbackStatus.clear();
             return generateQuestions(apiKey, topic, difficulty, questionCount);
-        } catch (LlmException e) {
-            throw new IOException("Failed to generate questions from Gemini: " + e.getMessage(), e);
+        } catch (Exception e) {
+            // Any failure during LLM call should trigger fallback to cached sources
+            System.err.println("[GeminiQuestionSource] Gemini generation failed: " + e.getMessage());
+            System.err.println("[GeminiQuestionSource] Attempting offline fallback (cached JSON then hardcoded)...");
+
+            // Try cached JSON built-in first (if available)
+            try {
+                String folder = mapTopicToFolder(topic);
+                List<Question> cached = JsonQuestionLoader.loadQuestions(folder, difficulty.toLowerCase());
+                GeminiFallbackStatus.setFallback("Built-in JSON");
+                System.out.println("[GeminiQuestionSource] Using cached built-in JSON questions (fallback)");
+                return cached;
+            } catch (Exception ex) {
+                System.err.println("[GeminiQuestionSource] Cached JSON fallback failed: " + ex.getMessage());
+                // Final fallback: hardcoded QuestionBank
+                try {
+                    QuestionBank bank = new QuestionBank();
+                    List<Question> hard = bank.getQuestionsByTopicAndDifficulty(topic, difficulty);
+                    GeminiFallbackStatus.setFallback("Hardcoded QuestionBank");
+                    System.out.println("[GeminiQuestionSource] Using hardcoded QuestionBank (final fallback)");
+                    return hard;
+                } catch (Exception ex2) {
+                    throw new IOException("All fallbacks failed: " + ex2.getMessage(), ex2);
+                }
+            }
         }
     }
     
@@ -174,6 +202,17 @@ public class GeminiQuestionSource implements QuestionSource {
             System.err.println("Error parsing question: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Map UI topic names to built-in folder names used by JsonQuestionLoader.
+     */
+    private String mapTopicToFolder(String topic) {
+        if (topic == null) return "";
+        if (topic.equalsIgnoreCase("Computer Science") || topic.equalsIgnoreCase("cs")) return "cs";
+        if (topic.equalsIgnoreCase("Artificial Intelligence") || topic.equalsIgnoreCase("ai")) return "ai";
+        if (topic.equalsIgnoreCase("Philosophy")) return "philosophy";
+        return topic.toLowerCase();
     }
     
     /**

@@ -67,69 +67,6 @@ Expected output:
 
 ---
 
-## Configuration
-
-### Environment Variables
-
-You can also set API keys via environment variables (higher priority than `.env`):
-
-**Windows (PowerShell):**
-
-```powershell
-$env:GEMINI_API_KEY="your_key_here"
-```
-
-**Windows (cmd):**
-
-```cmd
-set GEMINI_API_KEY=your_key_here
-```
-
-**Linux/macOS:**
-
-```bash
-export GEMINI_API_KEY="your_key_here"
-```
-
-### Configuration Priority
-
-Secrets are resolved in this order (highest to lowest):
-
-1. System environment variables
-2. `.env` file in project root
-3. `~/.mindquest/credentials.properties` (user home directory)
-
----
-
-## Architecture
-
-### Core Components
-
-```
-com.mindquest.llm/
-├── DTOs (data transfer objects)
-│   ├── Prompt.java           - Request sent to LLM
-│   ├── CompletionResult.java - Response from LLM
-│   ├── StreamEvent.java      - Streaming event
-│   ├── ProviderMetadata.java - Provider info
-│   └── ProviderOptions.java  - Configuration options
-│
-├── Interfaces
-│   ├── LlmProvider.java        - Core provider interface
-│   └── LlmProviderFactory.java - SPI factory interface
-│
-├── Infrastructure
-│   ├── ProviderRegistry.java  - Discovers providers via ServiceLoader
-│   ├── SecretResolver.java    - Resolves API keys from env/.env
-│   └── LlmException.java      - Categorized exceptions
-│
-└── providers/
-    ├── MockProvider.java       - Testing provider
-    ├── MockProviderFactory.java
-    ├── GeminiProvider.java     - Google Gemini (skeleton)
-    └── GeminiProviderFactory.java
-```
-
 ### How It Works
 
 1. **ServiceLoader Discovery**: `ProviderRegistry` uses Java's ServiceLoader to find all `LlmProviderFactory` implementations registered in `META-INF/services/com.mindquest.llm.LlmProviderFactory`.
@@ -258,8 +195,6 @@ LlmProvider provider = registry.createProvider("my-provider", "api-key", null);
 
 ---
 
-
-
 ## Next Steps
 
 1. **Implement Gemini HTTP calls** - See `GeminiProvider.java` TODOs
@@ -294,13 +229,3 @@ LlmProvider provider = registry.createProvider("my-provider", "api-key", null);
   }
 }
 ```
-
----
-
-## Support
-
-For issues or questions:
-
-- Check the [DESIGN.md](src/main/java/com/mindquest/llm/DESIGN.md) for architecture details
-- Run `LlmDiagnostic` to verify setup
-- Review error categories in `LlmException.Category`

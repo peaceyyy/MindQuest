@@ -7,6 +7,20 @@
   <version>0.1.0</version>
   <description>MindQuest - Console-based Learning</description>
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <targetPath>questions</targetPath>
+        <directory>src/questions</directory>
+        <includes>
+          <include>**/*.json</include>
+          <include>**/*.csv</include>
+          <include>**/*.xlsx</include>
+        </includes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>

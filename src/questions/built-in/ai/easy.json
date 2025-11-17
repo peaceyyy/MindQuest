@@ -3,7 +3,7 @@
   "difficulty": "Easy",
   "questions": [
     {
-      "questionText": "What does AI stand for?",
+      "questionText":   "What does AI stand for?",
       "choices": [
         "Automated Intelligence",
         "Artificial Intelligence",

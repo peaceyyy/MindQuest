@@ -131,8 +131,11 @@ public class CsvQuestionLoader implements QuestionSource {
     public static List<Question> loadQuestions(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         
-        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
-            List<String[]> rows = reader.readAll();
+        // Try to load from classpath first (for JAR), then from file system (for development)
+        java.io.Reader reader = getReader(filePath);
+        
+        try (CSVReader csvReader = new CSVReader(reader)) {
+            List<String[]> rows = csvReader.readAll();
             
             // Skip header row (first row)
             for (int i = 1; i < rows.size(); i++) {
@@ -157,6 +160,25 @@ public class CsvQuestionLoader implements QuestionSource {
         }
         
         return questions;
+    }
+    
+    /**
+     * Gets a Reader for the CSV file, trying classpath first, then file system.
+     */
+    private static java.io.Reader getReader(String filePath) throws IOException {
+        // Convert path to classpath format (e.g., "src/questions/..." -> "questions/...")
+        String classpathPath = filePath.replace("src/", "");
+        
+        // Try classpath resource first (for JAR)
+        java.io.InputStream is = CsvQuestionLoader.class.getClassLoader().getResourceAsStream(classpathPath);
+        if (is != null) {
+            System.out.println("[CSV Loader] Loading from classpath: " + classpathPath);
+            return new java.io.InputStreamReader(is);
+        }
+        
+        // Fall back to file system (for development)
+        System.out.println("[CSV Loader] Loading from file system: " + filePath);
+        return new FileReader(filePath);
     }
 
     /**
