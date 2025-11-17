@@ -61,7 +61,7 @@ public class ConsoleUI {
         }
         
         // Always show Mixed Mode option at the end
-        System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Mode " + ColorUtils.orange("(Coming Soon)"));
+        System.out.println(ColorUtils.yellow((topics.size() + 1) + ".") + " Mixed Topics" + ColorUtils.orange("(Coming Soon)"));
         
         System.out.print("\n" + ColorUtils.boldYellow("Enter your choice: "));
     }
@@ -118,7 +118,8 @@ public class ConsoleUI {
         for (int i = 0; i < choicesToDisplay.size(); i++) {
             System.out.println(String.format("%d. %s", (i + 1), choicesToDisplay.get(i)));
         }
-        System.out.println("\nType HINT remove half of the incorrect options (Remaining: " + player.getHints() + ")");
+        System.out.println("\nType HINT to remove half of the incorrect options (Remaining: " + player.getHints() + ")");
+        System.out.println(ColorUtils.orange("Tip: Type 'EXIT' to abandon this round and return to the main menu."));
         System.out.print("Enter your answer (1-" + choicesToDisplay.size() + "): ");
 
         if (GameConfig.DEBUG) {
