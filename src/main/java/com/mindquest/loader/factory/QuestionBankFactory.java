@@ -7,12 +7,34 @@ import com.mindquest.model.question.Question;
 import com.mindquest.model.QuestionBank;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 
 public class QuestionBankFactory {
 
     // Default mode - can be overridden during run
     private static SourceConfig.SourceType DEFAULT_MODE = SourceConfig.SourceType.BUILTIN_HARDCODED;
+    
+    // Background thread pool for async operations
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(
+        Runtime.getRuntime().availableProcessors(),
+        r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            t.setName("QuestionLoader-" + t.getId());
+            return t;
+        }
+    );
+    
+    static {
+        // Register shutdown hook to clean up thread pool
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            shutdown();
+        }));
+    }
     
 
     public static List<Question> getQuestions(SourceConfig config) {
@@ -76,5 +98,28 @@ public class QuestionBankFactory {
  
     public static void setDefaultMode(SourceConfig.SourceType mode) {
         DEFAULT_MODE = mode;
+    }
+
+    /**
+     * Async variant of getQuestions using an internal executor.
+     */
+    public static CompletableFuture<List<Question>> getQuestionsAsync(SourceConfig config) {
+        return CompletableFuture.supplyAsync(() -> getQuestions(config), executorService);
+    }
+
+    /**
+     * Shutdown the internal executor service used for async loading.
+     * Called from JVM shutdown hook and can be invoked manually during tests.
+     */
+    public static void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

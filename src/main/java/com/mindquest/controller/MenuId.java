@@ -1,7 +1,7 @@
 package com.mindquest.controller;
 
 /**
- * Enum representing distinct menu screens 
+ * Enum representing menu screens 
  * Used by NavigationManager to track navigation history.
  */
 public enum MenuId {

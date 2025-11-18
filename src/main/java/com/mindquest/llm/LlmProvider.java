@@ -1,6 +1,7 @@
 package com.mindquest.llm;
 
 import com.mindquest.llm.exception.LlmException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
 /**
@@ -25,6 +26,24 @@ public interface LlmProvider extends AutoCloseable {
      * @throws LlmException if the request fails (see category for details)
      */
     CompletionResult complete(Prompt prompt) throws LlmException;
+    
+    /**
+     * Sends a prompt asynchronously and returns a CompletableFuture.
+     * Non-blocking variant of complete() for UI applications.
+     * 
+     * @param prompt the prompt request
+     * @return CompletableFuture that will complete with the result
+     */
+    CompletableFuture<CompletionResult> completeAsync(Prompt prompt);
+    
+    /**
+     * Cancels an in-flight request by request ID.
+     * Best-effort cancellation - may not stop already-processing requests.
+     * 
+     * @param requestId the prompt ID to cancel
+     * @return true if cancellation was initiated, false if request not found
+     */
+    boolean cancel(String requestId);
     
     /**
      * Sends a prompt and returns a streaming publisher for partial results.

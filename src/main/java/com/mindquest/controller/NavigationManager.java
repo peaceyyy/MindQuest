@@ -4,12 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 
-/**
- * Manages navigation state using a stack-based approach.
- * Tracks the current menu and navigation history to support "back" navigation.
- * 
- * Thread-safety: Not thread-safe. Intended for single-threaded UI flows.
- */
+
 public class NavigationManager {
     private final Deque<MenuEntry> navigationStack;
 

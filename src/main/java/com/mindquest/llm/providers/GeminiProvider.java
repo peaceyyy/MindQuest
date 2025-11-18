@@ -6,9 +6,12 @@ import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
+import com.google.genai.types.HttpOptions;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
 
 /**
@@ -16,6 +19,7 @@ import java.util.concurrent.Flow;
  * 
  * Uses the google-genai library for clean, production-ready API integration.
  * Supports automatic API key detection from GOOGLE_API_KEY environment variable.
+ * Thread-safe with async support and request cancellation.
  * 
  * API Documentation: https://ai.google.dev/gemini-api/docs
  */
@@ -25,7 +29,11 @@ public class GeminiProvider implements LlmProvider {
     
     private final Client client;
     private final String modelName;
+    private final int timeoutSeconds;
     private boolean closed = false;
+    
+    // Track in-flight async requests for cancellation
+    private final ConcurrentHashMap<String, CompletableFuture<CompletionResult>> activeRequests = new ConcurrentHashMap<>();
     
     public GeminiProvider(String apiKey, ProviderOptions options) throws LlmException {
         if (apiKey == null || apiKey.isEmpty()) {
@@ -37,11 +45,17 @@ public class GeminiProvider implements LlmProvider {
         }
         
         this.modelName = DEFAULT_MODEL;
+        this.timeoutSeconds = options != null ? options.getTimeoutSeconds() : 30;
         
         try {
-            // Initialize official Gemini client
+            // Initialize official Gemini client with timeout configuration
+            HttpOptions httpOptions = HttpOptions.builder()
+                .timeout(timeoutSeconds)
+                .build();
+            
             this.client = Client.builder()
                 .apiKey(apiKey)
+                .httpOptions(httpOptions)
                 .build();
         } catch (Exception e) {
             throw new LlmException(
@@ -162,6 +176,116 @@ public class GeminiProvider implements LlmProvider {
     }
     
     @Override
+    public CompletableFuture<CompletionResult> completeAsync(Prompt prompt) {
+        if (closed) {
+            return CompletableFuture.failedFuture(
+                new LlmException(
+                    LlmException.Category.PROVIDER_ERROR,
+                    "gemini",
+                    "Provider already closed"
+                )
+            );
+        }
+        
+        // Build configuration
+        GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder()
+            .temperature((float) prompt.getTemperature())
+            .maxOutputTokens(prompt.getMaxTokens());
+        
+        // Disable thinking mode for faster responses
+        configBuilder.thinkingConfig(
+            com.google.genai.types.ThinkingConfig.builder()
+                .thinkingBudget(0)
+                .build()
+        );
+        
+        GenerateContentConfig config = configBuilder.build();
+        
+        // Combine instruction and context
+        String fullPrompt = prompt.getInstruction();
+        if (prompt.getContext() != null && !prompt.getContext().isEmpty()) {
+            fullPrompt = prompt.getContext() + "\n\n" + fullPrompt;
+        }
+        
+        // Use SDK's built-in async API
+        CompletableFuture<GenerateContentResponse> responseFuture = 
+            client.async.models.generateContent(modelName, fullPrompt, config);
+        
+        // Transform to CompletionResult and track for cancellation
+        CompletableFuture<CompletionResult> resultFuture = responseFuture
+            .thenApply(response -> {
+                String responseText = response.text();
+                
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("model", modelName);
+                
+                // Add token usage if available
+                if (response.usageMetadata().isPresent()) {
+                    GenerateContentResponseUsageMetadata usage = response.usageMetadata().get();
+                    if (usage.promptTokenCount().isPresent()) {
+                        metadata.put("promptTokens", usage.promptTokenCount().get());
+                    }
+                    if (usage.candidatesTokenCount().isPresent()) {
+                        metadata.put("completionTokens", usage.candidatesTokenCount().get());
+                    }
+                    if (usage.totalTokenCount().isPresent()) {
+                        metadata.put("totalTokens", usage.totalTokenCount().get());
+                    }
+                }
+                
+                return new CompletionResult(prompt.getId(), responseText, metadata);
+            })
+            .exceptionally(e -> {
+                // Map exceptions to LlmException categories
+                throw mapException(e.getCause() != null ? e.getCause() : e);
+            })
+            .whenComplete((result, error) -> {
+                // Remove from active requests when done
+                activeRequests.remove(prompt.getId());
+            });
+        
+        // Track for cancellation
+        activeRequests.put(prompt.getId(), resultFuture);
+        
+        return resultFuture;
+    }
+    
+    @Override
+    public boolean cancel(String requestId) {
+        CompletableFuture<CompletionResult> future = activeRequests.get(requestId);
+        if (future != null && !future.isDone()) {
+            boolean cancelled = future.cancel(true);
+            if (cancelled) {
+                activeRequests.remove(requestId);
+            }
+            return cancelled;
+        }
+        return false;
+    }
+    
+    /**
+     * Maps exceptions to LlmException with appropriate categories.
+     */
+    private RuntimeException mapException(Throwable e) {
+        String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        
+        LlmException.Category category;
+        if (message.contains("401") || message.contains("403") || message.contains("API key")) {
+            category = LlmException.Category.AUTH;
+        } else if (message.contains("429") || message.contains("rate limit")) {
+            category = LlmException.Category.RATE_LIMIT;
+        } else if (message.contains("timeout") || message.contains("connection")) {
+            category = LlmException.Category.NETWORK;
+        } else {
+            category = LlmException.Category.PROVIDER_ERROR;
+        }
+        
+        return new RuntimeException(
+            new LlmException(category, "gemini", message, e)
+        );
+    }
+    
+    @Override
     public Flow.Publisher<StreamEvent> stream(Prompt prompt) throws LlmException {
         if (closed) {
             throw new LlmException(
@@ -203,6 +327,9 @@ public class GeminiProvider implements LlmProvider {
     @Override
     public void close() {
         closed = true;
+        // Cancel all in-flight requests
+        activeRequests.forEach((id, future) -> future.cancel(true));
+        activeRequests.clear();
         // Official SDK client doesn't require explicit closing
     }
     

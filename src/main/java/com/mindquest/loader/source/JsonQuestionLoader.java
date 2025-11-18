@@ -8,8 +8,8 @@ import com.mindquest.model.question.MediumQuestion;
 import com.mindquest.model.question.Question;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,7 +21,7 @@ import java.util.List;
  */
 public class JsonQuestionLoader implements QuestionSource {
 
-    private static final String BASE_PATH = "src/questions/built-in/";
+    private static final String BASE_PATH = "questions/built-in/";
 
     /**
      * Implements QuestionSource interface.
@@ -46,9 +46,18 @@ public class JsonQuestionLoader implements QuestionSource {
     }
 
     public static List<Question> loadQuestions(String topic, String difficulty) throws IOException {
-        String filePath = BASE_PATH + topic + "/" + difficulty + ".json";
-        String jsonContent = new String(Files.readAllBytes(Paths.get(filePath)));
+        String resourcePath = BASE_PATH + topic + "/" + difficulty + ".json";
         
+        InputStream is = JsonQuestionLoader.class.getClassLoader().getResourceAsStream(resourcePath);
+        if (is == null) {
+            throw new IOException("JSON resource not found: " + resourcePath);
+        }
+        
+        byte[] bytes = new byte[is.available()];
+        is.read(bytes);
+        is.close();
+        
+        String jsonContent = new String(bytes, StandardCharsets.UTF_8);
         return parseJson(jsonContent, difficulty);
     }
 
@@ -180,13 +189,24 @@ public class JsonQuestionLoader implements QuestionSource {
         if (start == -1) return 0;
         
         start += searchKey.length();
+        
+        // Skip whitespace
+        while (start < json.length() && Character.isWhitespace(json.charAt(start))) {
+            start++;
+        }
+        
         int end = start;
         
         while (end < json.length() && Character.isDigit(json.charAt(end))) {
             end++;
         }
         
-        return Integer.parseInt(json.substring(start, end).trim());
+        String numberStr = json.substring(start, end).trim();
+        if (numberStr.isEmpty()) {
+            return 0;
+        }
+        
+        return Integer.parseInt(numberStr);
     }
 
     private static int questionCounter = 1;

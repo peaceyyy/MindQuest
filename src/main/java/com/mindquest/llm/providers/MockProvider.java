@@ -5,30 +5,42 @@ import com.mindquest.llm.exception.LlmException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 
 /**
  * Mock LLM provider for testing.
  * Returns canned responses without making real API calls.
+ * Thread-safe with async support and request cancellation.
  */
 public class MockProvider implements LlmProvider {
     
     private final String responseText;
     private final boolean simulateError;
     private boolean closed = false;
+    private final int simulatedDelayMs;
     
-    public MockProvider(String responseText, boolean simulateError) {
+    // Track in-flight async requests for cancellation
+    private final ConcurrentHashMap<String, CompletableFuture<CompletionResult>> activeRequests = new ConcurrentHashMap<>();
+    
+    public MockProvider(String responseText, boolean simulateError, int simulatedDelayMs) {
         this.responseText = responseText;
         this.simulateError = simulateError;
+        this.simulatedDelayMs = simulatedDelayMs;
+    }
+    
+    public MockProvider(String responseText, boolean simulateError) {
+        this(responseText, simulateError, 50);
     }
     
     public MockProvider(String responseText) {
-        this(responseText, false);
+        this(responseText, false, 50);
     }
     
     public MockProvider() {
-        this("Mock LLM response for testing", false);
+        this("Mock LLM response for testing", false, 50);
     }
     
     @Override
@@ -65,6 +77,64 @@ public class MockProvider implements LlmProvider {
         metadata.put("model", "mock-model-v1");
         
         return new CompletionResult(prompt.getId(), responseText, metadata);
+    }
+    
+    @Override
+    public CompletableFuture<CompletionResult> completeAsync(Prompt prompt) {
+        if (closed) {
+            return CompletableFuture.failedFuture(
+                new LlmException(
+                    LlmException.Category.PROVIDER_ERROR,
+                    "mock",
+                    "Provider already closed"
+                )
+            );
+        }
+        
+        if (simulateError) {
+            return CompletableFuture.failedFuture(
+                new LlmException(
+                    LlmException.Category.NETWORK,
+                    "mock",
+                    "Simulated network error"
+                )
+            );
+        }
+        
+        // Simulate async execution with delay
+        CompletableFuture<CompletionResult> future = CompletableFuture.supplyAsync(() -> {
+            try {
+                Thread.sleep(simulatedDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+            
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("tokens", responseText.split("\\s+").length);
+            metadata.put("model", "mock-model-v1");
+            
+            return new CompletionResult(prompt.getId(), responseText, metadata);
+        });
+        
+        // Track for cancellation
+        activeRequests.put(prompt.getId(), future);
+        future.whenComplete((result, error) -> activeRequests.remove(prompt.getId()));
+        
+        return future;
+    }
+    
+    @Override
+    public boolean cancel(String requestId) {
+        CompletableFuture<CompletionResult> future = activeRequests.get(requestId);
+        if (future != null && !future.isDone()) {
+            boolean cancelled = future.cancel(true);
+            if (cancelled) {
+                activeRequests.remove(requestId);
+            }
+            return cancelled;
+        }
+        return false;
     }
     
     @Override
@@ -115,6 +185,9 @@ public class MockProvider implements LlmProvider {
     @Override
     public void close() {
         closed = true;
+        // Cancel all in-flight requests
+        activeRequests.forEach((id, future) -> future.cancel(true));
+        activeRequests.clear();
     }
     
     public boolean isClosed() {

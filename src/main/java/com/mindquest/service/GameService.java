@@ -6,6 +6,10 @@ import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 import com.mindquest.service.dto.AnswerResult;
 import com.mindquest.service.dto.RoundSummary;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 
 public class GameService {
@@ -15,6 +19,9 @@ public class GameService {
 
     private Integer snapshotHp = null;
     private Integer snapshotScore = null;
+    private final ExecutorService backgroundPool = Executors.newFixedThreadPool(
+        Math.max(2, Runtime.getRuntime().availableProcessors()/2)
+    );
 
     public GameService(SessionManager sessionManager, Player player, QuestionBank questionBank) {
         this.sessionManager = sessionManager;
@@ -28,6 +35,28 @@ public class GameService {
         // (hints are per-round and reset automatically, so not snapshotted)
         snapshotHp = player.getHp();
         snapshotScore = player.getScore();
+    }
+
+    /**
+     * Async variant to start a new round without blocking caller (UI).
+     */
+    public CompletableFuture<Void> startNewRoundAsync(String topic, String difficulty) {
+        return CompletableFuture.runAsync(() -> startNewRound(topic, difficulty), backgroundPool);
+    }
+
+    /**
+     * Shutdown the background executor used by this service.
+     */
+    public void shutdown() {
+        backgroundPool.shutdown();
+        try {
+            if (!backgroundPool.awaitTermination(5, TimeUnit.SECONDS)) {
+                backgroundPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            backgroundPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public Question getCurrentQuestion() {
