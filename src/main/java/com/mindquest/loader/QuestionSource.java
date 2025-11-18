@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Unified interface for loading questions from different sources.
- * Implementations: JSON files, CSV files, Excel files, Gemini API, hardcoded bank.
+ * Unified interface for loading questions from different sources
+ * Implementations: JSON files, CSV files, Excel files, Gemini API, hardcoded bank. (To be expanded)
  */
 public interface QuestionSource {
     
@@ -20,9 +20,6 @@ public interface QuestionSource {
      */
     List<Question> loadQuestions(SourceConfig config) throws IOException;
     
-    /**
-     * Returns a human-readable name for this question source.
-     * Used for logging and user feedback.
-     */
+
     String getSourceName();
 }

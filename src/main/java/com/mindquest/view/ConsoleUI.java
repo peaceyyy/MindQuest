@@ -6,6 +6,7 @@ import com.mindquest.config.GameConfig;
 import com.mindquest.controller.InputHandler;
 import com.mindquest.controller.MenuId;
 import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.loader.source.GeminiFallbackStatus;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 
@@ -110,6 +111,16 @@ public class ConsoleUI {
     public static void displayQuestion(Player player, Question question, boolean hintUsed, SourceConfig sourceConfig) {
         clearScreen();
         displayHUD(player);
+        
+        // Display fallback warning if Gemini failed and fallback was used
+        if (sourceConfig != null && sourceConfig.getType() == SourceConfig.SourceType.GEMINI_API) {
+            if (GeminiFallbackStatus.isFallbackUsed()) {
+                String fallbackSource = GeminiFallbackStatus.getFallbackSource();
+                System.out.println(ColorUtils.boldOrange("⚠ WARNING: Gemini generation failed!"));
+                System.out.println(ColorUtils.yellow("Using fallback: " + fallbackSource));
+                System.out.println(ColorUtils.orange("-----------------------------------------"));
+            }
+        }
         
         if (question.getTopic() != null && !question.getTopic().isEmpty()) {
             System.out.println(ColorUtils.orange("[Topic: " + formatTopicName(question.getTopic()) + "]"));

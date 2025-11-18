@@ -8,10 +8,7 @@ import com.mindquest.model.QuestionBank;
 
 import java.util.List;
 
-/**
- * Supports: Hardcoded QuestionBank, JSON files, CSV files, Excel files, and Gemini API.
- * Uses QuestionSource interface for unified loading
- */
+
 public class QuestionBankFactory {
 
     // Default mode - can be overridden during run
@@ -30,7 +27,7 @@ public class QuestionBankFactory {
     }
     
     /**
-     * Uses default mode (BUILTIN_HARDCODED).
+     * Uses default mode (BUILTIN_HARDCODED)
      */
     public static List<Question> getQuestions(String topic, String difficulty) {
         SourceConfig config = new SourceConfig.Builder()

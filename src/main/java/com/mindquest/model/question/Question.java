@@ -32,7 +32,7 @@ public abstract class Question {
     }
 
     public List<String> getChoices() {
-        return new ArrayList<>(choices); // copy to prevent external modification
+        return new ArrayList<>(choices); 
     }
 
     public int getCorrectIndex() {
@@ -54,7 +54,7 @@ public abstract class Question {
         correctIndex = choices.indexOf(correctAnswer);
     }
 
-    // Helper method for hints: removes two incorrect options
+    // Method for hints: removes two incorrect options
     public List<String> removeIncorrectOptions() {
         List<String> hintedChoices = new ArrayList<>();
         List<String> incorrectOptions = new ArrayList<>();

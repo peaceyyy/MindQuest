@@ -3,6 +3,7 @@ package com.mindquest.controller;
 import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.loader.config.MixedTopicsConfig;
 import com.mindquest.loader.TopicScanner;
+import com.mindquest.loader.source.GeminiFallbackStatus;
 import com.mindquest.view.ConsoleUI;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
@@ -213,6 +214,19 @@ public class GameController {
         
         sessionManager.startMixedTopicsRound(config);
         
+        // Notify user if Gemini API fallback occurred (for mixed topics mode)
+        if (sessionManager.getSourceConfig() != null && 
+            sessionManager.getSourceConfig().getType() == SourceConfig.SourceType.GEMINI_API) {
+            if (GeminiFallbackStatus.isFallbackUsed()) {
+                String fallbackSource = GeminiFallbackStatus.getFallbackSource();
+                ConsoleUI.clearScreen();
+                ConsoleUI.displayMessage("\n⚠ WARNING: Gemini API generation failed!");
+                ConsoleUI.displayMessage("Fallback source: " + fallbackSource);
+                ConsoleUI.displayMessage("\nPress Enter to continue with fallback questions...");
+                InputHandler.waitForEnter();
+            }
+        }
+        
         
         if (sessionManager.getCurrentRoundQuestionCount() == 0) {
             ConsoleUI.displayMessage("\nNo questions available for the selected topics and difficulty.");
@@ -312,6 +326,19 @@ public class GameController {
         }
 
         gameService.startNewRound(topic, difficulty);
+        
+        // Notify user if Gemini API fallback occurred
+        if (sessionManager.getSourceConfig() != null && 
+            sessionManager.getSourceConfig().getType() == SourceConfig.SourceType.GEMINI_API) {
+            if (GeminiFallbackStatus.isFallbackUsed()) {
+                String fallbackSource = GeminiFallbackStatus.getFallbackSource();
+                ConsoleUI.clearScreen();
+                ConsoleUI.displayMessage("\n⚠ WARNING: Gemini API generation failed!");
+                ConsoleUI.displayMessage("Fallback source: " + fallbackSource);
+                ConsoleUI.displayMessage("\nPress Enter to continue with fallback questions...");
+                InputHandler.waitForEnter();
+            }
+        }
         
         // check if any questions were loaded before entering the game loop
         if (sessionManager.getCurrentRoundQuestionCount() == 0) {

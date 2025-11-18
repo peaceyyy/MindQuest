@@ -25,10 +25,7 @@ public class CsvQuestionLoader implements QuestionSource {
 
     private static int questionCounter = 1;
 
-    /**
-     * Implements QuestionSource interface.
-     * Loads questions from CSV file based on topic in the configuration.
-     */
+
     @Override
     public List<Question> loadQuestions(SourceConfig config) throws IOException {
         String topic = config.getTopic();
@@ -45,19 +42,13 @@ public class CsvQuestionLoader implements QuestionSource {
         return result;
     }
     
-    /**
-     * Returns the source name for logging and user feedback.
-     */
+
     @Override
     public String getSourceName() {
         return "CSV File";
     }
 
-    /**
-     * Maps display topic name to CSV filename (without extension).
-     * Example: "Artificial Intelligence" → "ai"
-     * If topic is already a filename (e.g., "ai"), returns as-is.
-     */
+    
     private static String getTopicFileName(String topic) {
         if (topic == null) return "unknown";
         
@@ -154,9 +145,7 @@ public class CsvQuestionLoader implements QuestionSource {
         return questions;
     }
     
-    /**
-     * Gets a Reader for the CSV file, trying classpath first, then file system.
-     */
+  
     private static java.io.Reader getReader(String filePath) throws IOException {
         String classpathPath = filePath.replace("src/", "");
         
@@ -218,7 +207,7 @@ public class CsvQuestionLoader implements QuestionSource {
     }
 
     /**
-     * Checks if a row is empty (all cells are blank or whitespace).
+     * Checks if a row is empty 
      */
     private static boolean isRowEmpty(String[] row) {
         for (String cell : row) {
@@ -230,7 +219,7 @@ public class CsvQuestionLoader implements QuestionSource {
     }
 
     /**
-     * Generates a unique question ID.
+     * Generate unique question ID
      */
     private static String generateQuestionId(String difficulty) {
         return "CSV_" + difficulty.toUpperCase() + "_" + String.format("%03d", questionCounter++);
