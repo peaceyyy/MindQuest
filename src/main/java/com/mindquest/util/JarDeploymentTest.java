@@ -50,7 +50,7 @@ public class JarDeploymentTest {
 
             if (classPath.endsWith(".jar")) {
                 System.out.println("✓ Running from JAR: " + classPath);
-                System.out.println("  External data should be in: ./data/");
+                System.out.println("  External data should be in: ./questions/");
             } else {
                 System.out.println("✓ Running from IDE/classes");
                 System.out.println("  Using development paths: src/questions/...");
@@ -107,7 +107,7 @@ public class JarDeploymentTest {
         System.out.println("─────────────────────────────────────────");
 
         // Check if external CSV directory exists
-        String csvPath = isJarEnvironment() ? "./data/csv/" : "src/questions/external_source/csv/";
+        String csvPath = isJarEnvironment() ? "./questions/csv/" : "src/questions/external_source/csv/";
         File csvDir = new File(csvPath);
 
         if (!csvDir.exists()) {
@@ -147,7 +147,7 @@ public class JarDeploymentTest {
         System.out.println("Test 3: External Excel Resources (Filesystem)");
         System.out.println("─────────────────────────────────────────");
 
-        String xlsxPath = isJarEnvironment() ? "./data/xlsx/" : "src/questions/external_source/xlsx/";
+        String xlsxPath = isJarEnvironment() ? "./questions/xlsx/" : "src/questions/external_source/xlsx/";
         File xlsxDir = new File(xlsxPath);
 
         if (!xlsxDir.exists()) {
