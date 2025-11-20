@@ -11,6 +11,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class QuestionBankFactory {
@@ -18,13 +20,15 @@ public class QuestionBankFactory {
     // Default mode - can be overridden during run
     private static SourceConfig.SourceType DEFAULT_MODE = SourceConfig.SourceType.BUILTIN_HARDCODED;
     
+    private static final AtomicInteger loaderThreadCounter = new AtomicInteger(1);
+    
     // Background thread pool for async operations
     private static final ExecutorService executorService = Executors.newFixedThreadPool(
         Runtime.getRuntime().availableProcessors(),
         r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);
-            t.setName("QuestionLoader-" + t.getId());
+            t.setName("QuestionLoader-" + loaderThreadCounter.getAndIncrement());
             return t;
         }
     );
@@ -102,9 +106,18 @@ public class QuestionBankFactory {
 
     /**
      * Async variant of getQuestions using an internal executor.
+     * Times out after 30 seconds to prevent indefinite hangs on file I/O.
      */
     public static CompletableFuture<List<Question>> getQuestionsAsync(SourceConfig config) {
-        return CompletableFuture.supplyAsync(() -> getQuestions(config), executorService);
+        return CompletableFuture.supplyAsync(() -> getQuestions(config), executorService)
+            .orTimeout(30, TimeUnit.SECONDS)
+            .exceptionally(e -> {
+                if (e.getCause() instanceof TimeoutException) {
+                    System.err.println("[QuestionBankFactory] Question loading timed out after 30s, falling back to hardcoded.");
+                }
+                // Fallback to hardcoded questions on any error
+                return getQuestionsFromHardcoded(config.getTopic(), config.getDifficulty());
+            });
     }
 
     /**

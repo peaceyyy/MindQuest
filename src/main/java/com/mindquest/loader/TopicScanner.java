@@ -9,11 +9,40 @@ import java.util.*;
 /**
  * Scans external source directories (csv/ and xlsx/) to discover available topics.
  * Enables plug-and-play functionality: just add a file, and it appears in the menu.
+ * 
+ * Automatically detects JAR vs IDE environment:
+ * - Development: Uses src/questions/external_source/...
+ * - Production (JAR): Uses ./data/... (external to JAR)
  */
 public class TopicScanner {
     
-    private static final String CSV_BASE_PATH = "src/questions/external_source/csv/";
-    private static final String XLSX_BASE_PATH = "src/questions/external_source/xlsx/";
+    private static final String DEV_CSV_PATH = "src/questions/external_source/csv/";
+    private static final String DEV_XLSX_PATH = "src/questions/external_source/xlsx/";
+    private static final String PROD_CSV_PATH = "./data/csv/";
+    private static final String PROD_XLSX_PATH = "./data/xlsx/";
+    
+    private static final String CSV_BASE_PATH = getBasePath(DEV_CSV_PATH, PROD_CSV_PATH);
+    private static final String XLSX_BASE_PATH = getBasePath(DEV_XLSX_PATH, PROD_XLSX_PATH);
+    
+    /**
+     * Detects if running from JAR and returns appropriate base path.
+     */
+    private static String getBasePath(String devPath, String prodPath) {
+        try {
+            String classPath = TopicScanner.class.getProtectionDomain()
+                .getCodeSource().getLocation().getPath();
+            
+            // Running from JAR → use external data directory
+            if (classPath.endsWith(".jar")) {
+                return prodPath;
+            }
+        } catch (Exception e) {
+            // Fallback to dev path if detection fails
+        }
+        
+        // Development or detection failed → use src/ directory
+        return devPath;
+    }
     
 
     public static List<String> getAvailableTopics(SourceConfig.SourceType sourceType) {
@@ -21,10 +50,12 @@ public class TopicScanner {
         
         switch (sourceType) {
             case CUSTOM_CSV:
+                System.out.println("[TopicScanner] Scanning CSV from: " + CSV_BASE_PATH);
                 topics.addAll(scanDirectory(CSV_BASE_PATH, ".csv"));
                 break;
                 
             case CUSTOM_EXCEL:
+                System.out.println("[TopicScanner] Scanning Excel from: " + XLSX_BASE_PATH);
                 topics.addAll(scanDirectory(XLSX_BASE_PATH, ".xlsx"));
                 break;
                 

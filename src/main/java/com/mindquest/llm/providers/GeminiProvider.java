@@ -12,7 +12,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Gemini LLM provider using official Google GenAI SDK.
@@ -34,6 +40,24 @@ public class GeminiProvider implements LlmProvider {
     
     // Track in-flight async requests for cancellation
     private final ConcurrentHashMap<String, CompletableFuture<CompletionResult>> activeRequests = new ConcurrentHashMap<>();
+    
+    // Executor for streaming operations
+    private final ExecutorService streamExecutor = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        t.setName("GeminiStream-" + t.hashCode());
+        return t;
+    });
+    
+    // Scheduler for timeout enforcement
+    private final ScheduledExecutorService timeoutScheduler = Executors.newScheduledThreadPool(1, r -> {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        t.setName("GeminiTimeout");
+        return t;
+    });
+    
+    private static final int STREAMING_TIMEOUT_SECONDS = 120; // 2 minutes for long-form content
     
     public GeminiProvider(String apiKey, ProviderOptions options) throws LlmException {
         if (apiKey == null || apiKey.isEmpty()) {
@@ -247,7 +271,8 @@ public class GeminiProvider implements LlmProvider {
         // Track for cancellation
         activeRequests.put(prompt.getId(), resultFuture);
         
-        return resultFuture;
+        // Apply application-level timeout
+        return resultFuture.orTimeout(timeoutSeconds, TimeUnit.SECONDS);
     }
     
     @Override
@@ -270,7 +295,9 @@ public class GeminiProvider implements LlmProvider {
         String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
         
         LlmException.Category category;
-        if (message.contains("401") || message.contains("403") || message.contains("API key")) {
+        if (e instanceof TimeoutException) {
+            category = LlmException.Category.TIMEOUT;
+        } else if (message.contains("401") || message.contains("403") || message.contains("API key")) {
             category = LlmException.Category.AUTH;
         } else if (message.contains("429") || message.contains("rate limit")) {
             category = LlmException.Category.RATE_LIMIT;
@@ -295,12 +322,89 @@ public class GeminiProvider implements LlmProvider {
             );
         }
         
-        // TODO: Implement streaming using client.models.generateContentStream()
-        // The official SDK provides ResponseStream<GenerateContentResponse>
+        // Build configuration
+        GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder()
+            .temperature((float) prompt.getTemperature())
+            .maxOutputTokens(prompt.getMaxTokens());
         
-        throw new UnsupportedOperationException(
-            "Gemini streaming not yet implemented."
+        // Disable thinking mode for faster responses
+        configBuilder.thinkingConfig(
+            com.google.genai.types.ThinkingConfig.builder()
+                .thinkingBudget(0)
+                .build()
         );
+        
+        GenerateContentConfig config = configBuilder.build();
+        
+        // Combine instruction and context
+        String fullPrompt = prompt.getInstruction();
+        if (prompt.getContext() != null && !prompt.getContext().isEmpty()) {
+            fullPrompt = prompt.getContext() + "\n\n" + fullPrompt;
+        }
+        
+        // Create publisher with backpressure support
+        SubmissionPublisher<StreamEvent> publisher = new SubmissionPublisher<>(
+            streamExecutor,
+            Flow.defaultBufferSize()
+        );
+        
+        // Schedule timeout task
+        var timeoutTask = timeoutScheduler.schedule(() -> {
+            publisher.submit(StreamEvent.error(
+                prompt.getId(),
+                new TimeoutException("Streaming exceeded " + STREAMING_TIMEOUT_SECONDS + " seconds")
+            ));
+            publisher.close();
+        }, STREAMING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        
+        // Start streaming in background
+        final String finalPrompt = fullPrompt;
+        streamExecutor.submit(() -> {
+            com.google.genai.ResponseStream<GenerateContentResponse> responseStream = null;
+            try {
+                // Get streaming response from SDK
+                responseStream = client.models.generateContentStream(
+                    modelName,
+                    finalPrompt,
+                    config
+                );
+                
+                // Iterate and emit stream events
+                for (GenerateContentResponse chunk : responseStream) {
+                    String partialText = chunk.text();
+                    
+                    if (partialText != null && !partialText.isEmpty()) {
+                        StreamEvent event = StreamEvent.partial(prompt.getId(), partialText);
+                        publisher.submit(event);
+                    }
+                }
+                
+                // Emit completion event
+                publisher.submit(StreamEvent.done(prompt.getId()));
+                timeoutTask.cancel(false); // Cancel timeout since we completed normally
+                
+            } catch (Exception e) {
+                timeoutTask.cancel(false); // Cancel timeout on error too
+                // Emit error event
+                LlmException llmError = new LlmException(
+                    LlmException.Category.PROVIDER_ERROR,
+                    "gemini",
+                    "Streaming error: " + e.getMessage(),
+                    e
+                );
+                publisher.submit(StreamEvent.error(prompt.getId(), llmError));
+            } finally {
+                // Clean up stream
+                if (responseStream != null) {
+                    try {
+                        responseStream.close();
+                    } catch (Exception ignored) {}
+                }
+                publisher.close();
+            }
+        });
+        
+        return publisher;
     }
     
     @Override
@@ -330,6 +434,9 @@ public class GeminiProvider implements LlmProvider {
         // Cancel all in-flight requests
         activeRequests.forEach((id, future) -> future.cancel(true));
         activeRequests.clear();
+        // Shutdown executors
+        streamExecutor.shutdown();
+        timeoutScheduler.shutdown();
         // Official SDK client doesn't require explicit closing
     }
     

@@ -10,6 +10,7 @@ public class LlmException extends Exception {
         AUTH,           // Invalid or missing API key
         NETWORK,        // Network connection issues
         RATE_LIMIT,     // Provider rate limit exceeded
+        TIMEOUT,        // Operation exceeded timeout limit
         PARSE,          // Unable to parse provider response
         PROVIDER_ERROR, // Provider returned 5xx error
         INVALID_REQUEST // Invalid prompt or configuration

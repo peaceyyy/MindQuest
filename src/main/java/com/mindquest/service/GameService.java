@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class GameService {
@@ -19,8 +20,15 @@ public class GameService {
 
     private Integer snapshotHp = null;
     private Integer snapshotScore = null;
+    private static final AtomicInteger poolThreadCounter = new AtomicInteger(1);
     private final ExecutorService backgroundPool = Executors.newFixedThreadPool(
-        Math.max(2, Runtime.getRuntime().availableProcessors()/2)
+        Math.max(2, Runtime.getRuntime().availableProcessors()/2),
+        r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            t.setName("GameService-" + poolThreadCounter.getAndIncrement());
+            return t;
+        }
     );
 
     public GameService(SessionManager sessionManager, Player player, QuestionBank questionBank) {
@@ -39,9 +47,13 @@ public class GameService {
 
     /**
      * Async variant to start a new round without blocking caller (UI).
+     * Times out after 60 seconds to prevent indefinite hangs.
      */
     public CompletableFuture<Void> startNewRoundAsync(String topic, String difficulty) {
-        return CompletableFuture.runAsync(() -> startNewRound(topic, difficulty), backgroundPool);
+        return CompletableFuture.runAsync(
+            () -> startNewRound(topic, difficulty),
+            backgroundPool
+        ).orTimeout(60, TimeUnit.SECONDS);
     }
 
     /**
