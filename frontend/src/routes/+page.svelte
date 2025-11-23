@@ -15,21 +15,29 @@
 	
 	async function loadGlobalPoints() {
 		try {
-			// Create a temporary session to check global points
-			const res = await fetch('/api/sessions', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({})
-			});
-			
-			if (res.ok) {
-				const data = await res.json();
-				const stateRes = await fetch(`/api/sessions/${data.sessionId}/state`);
+			// First check if we have a persisted career points value in localStorage
+			const persisted = localStorage.getItem('mindquest:careerPoints');
+			console.log('[DEBUG] Persisted career points:', persisted);
+			if (persisted) {
+				globalPoints = parseInt(persisted) || 0;
+				console.log('[DEBUG] Loaded career points from localStorage:', globalPoints);
+				return;
+			}
+			// Next, check for a lastSessionId we can query (useful when resuming)
+			const lastSessionId = localStorage.getItem('mindquest:lastSessionId');
+			console.log('[DEBUG] Last session ID:', lastSessionId);
+			if (lastSessionId) {
+				const stateRes = await fetch(`/api/sessions/${lastSessionId}/state`);
 				if (stateRes.ok) {
 					const state = await stateRes.json();
 					globalPoints = state.globalPoints || 0;
+					console.log('[DEBUG] Loaded from session state:', globalPoints);
+					return;
 				}
 			}
+			// Fallback: zero
+			globalPoints = 0;
+			console.log('[DEBUG] No saved points, defaulting to 0');
 		} catch (err) {
 			console.log('Could not load global points:', err);
 			globalPoints = 0;
@@ -46,9 +54,7 @@
 	<header>
 		<h1>MindQuest</h1>
 		<p>Test your knowledge across multiple domains</p>
-		{#if globalPoints > 0}
-			<div class="global-points">Career Points: {globalPoints}</div>
-		{/if}
+		<div class="global-points">Career Points: {globalPoints}</div>
 	</header>
 
 	<main>

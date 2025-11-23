@@ -1,17 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	
-	let points = $state(0);
-	let answered = $state(0);
-	let accuracy = $state(0);
-	
-	onMount(() => {
-		points = parseInt($page.url.searchParams.get('points') || '0');
-		answered = parseInt($page.url.searchParams.get('answered') || '0');
-		accuracy = answered > 0 ? Math.round((points / (answered * 10)) * 100) : 0;
-	});
+	import { page } from '$app/state';
+
+	let points = $derived(parseInt(page.url.searchParams.get('points') || '0', 10));
+	let answered = $derived(parseInt(page.url.searchParams.get('answered') || '0', 10));
+	let accuracy = $derived(answered > 0 ? Math.round((points / (answered * 10)) * 100) : 0);
 	
 	function playAgain() {
 		goto('/');

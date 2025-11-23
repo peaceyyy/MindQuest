@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	
 	// Game state
 	let sessionId = $state('');
@@ -22,8 +22,8 @@
 	
 	onMount(async () => {
 		// Get topic & difficulty from URL params
-		topic = $page.url.searchParams.get('topic') || 'ai';
-		difficulty = $page.url.searchParams.get('difficulty') || 'easy';
+		topic = page.url.searchParams.get('topic') || 'ai';
+		difficulty = page.url.searchParams.get('difficulty') || 'easy';
 		
 		// Initialize game flow
 		await initializeGame();
@@ -45,6 +45,12 @@
 			
 			const sessionData = await sessionRes.json();
 			sessionId = sessionData.sessionId;
+			// Persist last session id so home can query it later
+			try {
+				localStorage.setItem('mindquest:lastSessionId', sessionId);
+			} catch (e) {
+				console.warn('LocalStorage not available:', e);
+			}
 			
 			// 2. Start round
 			const roundRes = await fetch(`/api/sessions/${sessionId}/start`, {
@@ -78,6 +84,15 @@
 				// Round complete
 				roundComplete = true;
 				await loadFinalStats();
+				// Persist career points (add this round's totalPoints to stored career)
+				try {
+					const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
+					const updated = prev + (totalPoints || 0);
+					localStorage.setItem('mindquest:careerPoints', String(updated));
+					console.log('[Play] loadQuestion - Round complete via 204, career points persisted:', { prev, totalPoints, updated });
+				} catch (e) {
+					console.warn('Failed to persist career points:', e);
+				}
 				return;
 			}
 			
@@ -123,6 +138,15 @@
 			// Check if round is complete
 			if (result.roundComplete) {
 				roundComplete = true;
+				// Persist career points on round completion
+				try {
+					const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
+					const updated = prev + (totalPoints || 0);
+					localStorage.setItem('mindquest:careerPoints', String(updated));
+					console.log('[Play] submitAnswer - Round complete, career points persisted:', { prev, totalPoints, updated });
+				} catch (e) {
+					console.warn('Failed to persist career points:', e);
+				}
 			}
 			
 		} catch (err: any) {
@@ -154,6 +178,15 @@
 	}
 	
 	function backToHome() {
+		// Persist current round progress when quitting
+		try {
+			const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
+			const updated = prev + (totalPoints || 0);
+			localStorage.setItem('mindquest:careerPoints', String(updated));
+			console.log('[Play] backToHome - Career points persisted:', { prev, totalPoints, updated });
+		} catch (e) {
+			console.warn('Failed to persist career points on quit:', e);
+		}
 		goto('/');
 	}
 </script>
