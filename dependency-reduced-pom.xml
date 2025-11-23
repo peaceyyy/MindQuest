@@ -20,6 +20,13 @@
           <include>**/*.xlsx</include>
         </includes>
       </resource>
+      <resource>
+        <targetPath>static</targetPath>
+        <directory>frontend/dist</directory>
+        <includes>
+          <include>**/*</include>
+        </includes>
+      </resource>
     </resources>
     <plugins>
       <plugin>
@@ -34,6 +41,39 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>frontend-install</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>bun</executable>
+              <workingDirectory>${project.basedir}/frontend</workingDirectory>
+              <arguments>
+                <argument>install</argument>
+              </arguments>
+              <ignoreErrors>true</ignoreErrors>
+            </configuration>
+          </execution>
+          <execution>
+            <id>frontend-build</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>bun</executable>
+              <workingDirectory>${project.basedir}/frontend</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument>build</argument>
+              </arguments>
+              <ignoreErrors>true</ignoreErrors>
+            </configuration>
+          </execution>
+        </executions>
         <configuration>
           <mainClass>com.mindquest.Main</mainClass>
         </configuration>

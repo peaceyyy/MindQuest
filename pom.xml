@@ -96,6 +96,14 @@
                     <include>**/*.xlsx</include>
                 </includes>
             </resource>
+            <!-- Bundle built frontend (Svelte/Vite output) into JAR under /static if present -->
+            <resource>
+                <directory>frontend/dist</directory>
+                <targetPath>static</targetPath>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
         </resources>
         
         <plugins>
@@ -119,6 +127,42 @@
                     <!-- Your main class is in package `com.mindquest` and class `Main` -->
                     <mainClass>com.mindquest.Main</mainClass>
                 </configuration>
+                <executions>
+                    <!-- Install frontend dependencies (Bun) -->
+                    <execution>
+                        <id>frontend-install</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bun</executable>
+                            <workingDirectory>${project.basedir}/frontend</workingDirectory>
+                            <arguments>
+                                <argument>install</argument>
+                            </arguments>
+                            <!-- Allow build to continue if Bun not installed (CI can add Bun later) -->
+                            <ignoreErrors>true</ignoreErrors>
+                        </configuration>
+                    </execution>
+                    <!-- Build frontend static assets -->
+                    <execution>
+                        <id>frontend-build</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bun</executable>
+                            <workingDirectory>${project.basedir}/frontend</workingDirectory>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                            <ignoreErrors>true</ignoreErrors>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Shade plugin: create an executable fat JAR if you want to package the app -->

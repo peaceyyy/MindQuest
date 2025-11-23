@@ -20,12 +20,40 @@ public class GameServer {
 
     public static void main(String[] args) {
         try {
+            int port = getPort();
+            
             Javalin app = Javalin.create(config -> {
                 config.bundledPlugins.enableCors(cors -> cors.addRule(it -> it.anyHost()));
-            }).start(7070);
+            }).start(port);
 
-            // Health check
+            // Request/Response logging for debugging
+            app.before(ctx -> {
+                System.out.println("[REQ] " + ctx.method() + " " + ctx.path() + " from " + ctx.ip());
+            });
+            
+            app.after(ctx -> {
+                System.out.println("[RES] " + ctx.status() + " " + ctx.method() + " " + ctx.path());
+            });
+
+            // Global error handler
+            app.exception(Exception.class, (e, ctx) -> {
+                System.err.println("[ERROR] Unhandled exception: " + e.getMessage());
+                e.printStackTrace();
+                ctx.status(500).json(Map.of(
+                    "error", "Internal server error",
+                    "message", e.getMessage()
+                ));
+            });
+
+            // Health check endpoints
             app.get("/", ctx -> ctx.result("MindQuest Game Server is running!"));
+            
+            app.get("/health", ctx -> ctx.json(Map.of(
+                "status", "UP",
+                "timestamp", System.currentTimeMillis(),
+                "activeSessions", sessions.size(),
+                "port", port
+            )));
 
             // Session management
             app.post("/api/sessions", GameServer::createSession);
@@ -36,12 +64,32 @@ public class GameServer {
             app.post("/api/sessions/{id}/answer", GameServer::submitAnswer);
             app.get("/api/sessions/{id}/state", GameServer::getSessionState);
             
-            System.out.println("Game Server started on port 7070");
+            System.out.println("===================================");
+            System.out.println("Game Server started on port " + port);
+            System.out.println("Health: http://localhost:" + port + "/health");
+            System.out.println("===================================");
             
-            // Keep the main thread alive just in case
-            Thread.currentThread().join();
+            // Graceful shutdown hook for cloud platforms
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("[SHUTDOWN] Stopping server gracefully...");
+                app.stop();
+                // Clean up any background resources
+                sessions.values().forEach(service -> {
+                    try {
+                        service.shutdown();
+                    } catch (Exception e) {
+                        System.err.println("[SHUTDOWN] Error closing service: " + e.getMessage());
+                    }
+                });
+                System.out.println("[SHUTDOWN] Server stopped.");
+            }));
+            
+            // Javalin's Jetty server runs in background threads, no need to block main thread
+            
         } catch (Exception e) {
+            System.err.println("[FATAL] Failed to start server: " + e.getMessage());
             e.printStackTrace();
+            System.exit(1);
         }
     }
 
@@ -97,6 +145,16 @@ public class GameServer {
             return;
         }
         
+        // DIAGNOSTIC LOGGING: Log question details before sending
+        try {
+            System.out.println("[DEBUG] Sending question ID: " + q.getId());
+            System.out.println("[DEBUG] Question text: " + q.getQuestionText());
+            System.out.println("[DEBUG] Choices count: " + q.getChoices().size());
+            System.out.println("[DEBUG] Correct index: " + q.getCorrectIndex());
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to log question details: " + e.getMessage());
+        }
+        
         ctx.json(q);
     }
 
@@ -108,7 +166,13 @@ public class GameServer {
             return;
         }
         
-        AnswerRequest req = ctx.bodyAsClass(AnswerRequest.class);
+        AnswerRequest req;
+        try {
+            req = ctx.bodyAsClass(AnswerRequest.class);
+        } catch (Exception e) {
+            ctx.status(400).json(Map.of("error", "Invalid request format", "message", e.getMessage()));
+            return;
+        }
         
         Question q = gameService.getCurrentQuestion();
         if (q == null) {
@@ -116,7 +180,19 @@ public class GameServer {
             return;
         }
         
-        AnswerResult result = gameService.evaluateAnswer(q, req.index, false); // Assuming not final chance for now
+        // Map letter answer (A/B/C/D) to index (0-3) if provided as string
+        int answerIndex = req.index;
+        if (req.answer != null && !req.answer.isEmpty()) {
+            answerIndex = letterToIndex(req.answer);
+            if (answerIndex == -1) {
+                ctx.status(400).json(Map.of("error", "Invalid answer format", "message", "Answer must be A, B, C, D or index 0-3"));
+                return;
+            }
+        }
+        
+        System.out.println("[DEBUG] Received answer: " + (req.answer != null ? req.answer : req.index) + " -> index: " + answerIndex);
+        
+        AnswerResult result = gameService.evaluateAnswer(q, answerIndex, false); // Assuming not final chance for now
         gameService.moveToNextQuestion();
         
         // Check if round ended
@@ -159,7 +235,42 @@ public class GameServer {
     }
 
     public static class AnswerRequest {
-        public int index;
+        public int index;  // Legacy numeric index (0-3)
+        public String answer; // Letter answer (A/B/C/D)
+    }
+
+    /**
+     * Convert letter answer (A/B/C/D) to zero-based index (0-3).
+     * Returns -1 if invalid.
+     */
+    private static int letterToIndex(String letter) {
+        if (letter == null || letter.isEmpty()) {
+            return -1;
+        }
+        
+        String upper = letter.trim().toUpperCase();
+        switch (upper) {
+            case "A": return 0;
+            case "B": return 1;
+            case "C": return 2;
+            case "D": return 3;
+            default: return -1;
+        }
+    }
+
+    /**
+     * Get port from environment variable (for GCP Cloud Run, Render, etc.) or fallback to 7070 for local dev.
+     */
+    private static int getPort() {
+        String portEnv = System.getenv("PORT");
+        if (portEnv != null && !portEnv.isEmpty()) {
+            try {
+                return Integer.parseInt(portEnv);
+            } catch (NumberFormatException e) {
+                System.err.println("[WARN] Invalid PORT env var '" + portEnv + "', using default 7070");
+            }
+        }
+        return 7070; // local development fallback
     }
 
     // Normalization helpers to convert user-friendly input to QuestionBank format
