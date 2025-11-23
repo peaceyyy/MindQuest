@@ -70,8 +70,12 @@ public class GameServer {
             return;
         }
 
-        gameService.startNewRound(req.topic, req.difficulty);
-        ctx.json(Map.of("message", "Round started", "topic", req.topic, "difficulty", req.difficulty));
+        // Normalize topic and difficulty to match QuestionBank format
+        String normalizedTopic = normalizeTopic(req.topic);
+        String normalizedDifficulty = normalizeDifficulty(req.difficulty);
+
+        gameService.startNewRound(normalizedTopic, normalizedDifficulty);
+        ctx.json(Map.of("message", "Round started", "topic", normalizedTopic, "difficulty", normalizedDifficulty));
     }
 
     private static void getCurrentQuestion(Context ctx) {
@@ -156,5 +160,50 @@ public class GameServer {
 
     public static class AnswerRequest {
         public int index;
+    }
+
+    // Normalization helpers to convert user-friendly input to QuestionBank format
+    private static String normalizeTopic(String topic) {
+        if (topic == null) return null;
+        
+        String lower = topic.toLowerCase().trim();
+        
+        // Map short forms and variations to full names
+        switch (lower) {
+            case "ai":
+            case "artificial intelligence":
+                return "Artificial Intelligence";
+            case "cs":
+            case "computer science":
+                return "Computer Science";
+            case "philosophy":
+            case "phil":
+                return "Philosophy";
+            default:
+                // Capitalize first letter of each word for unknown topics
+                return capitalizeWords(topic.trim());
+        }
+    }
+
+    private static String normalizeDifficulty(String difficulty) {
+        if (difficulty == null) return null;
+        
+        String lower = difficulty.toLowerCase().trim();
+        
+        // Capitalize first letter: easy -> Easy, medium -> Medium, hard -> Hard
+        return lower.substring(0, 1).toUpperCase() + lower.substring(1);
+    }
+
+    private static String capitalizeWords(String input) {
+        String[] words = input.split("\\s+");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1).toLowerCase())
+                      .append(" ");
+            }
+        }
+        return result.toString().trim();
     }
 }
