@@ -195,7 +195,19 @@ public class ExcelQuestionLoader implements QuestionSource {
                 }
             }
             
-            int correctIndex = (int) getCellValueAsNumber(row.getCell(7));
+            int correctIndex = 0;
+            try {
+                Cell cell = row.getCell(7);
+                if (cell != null) {
+                    correctIndex = (int) getCellValueAsNumber(cell);
+                } else {
+                    System.err.println("Missing correct index in row " + row.getRowNum());
+                    return null;
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing correct index in row " + row.getRowNum() + ": " + e.getMessage());
+                return null;
+            }
             
             if (questionText.isEmpty() || choices.isEmpty()) {
                 return null;

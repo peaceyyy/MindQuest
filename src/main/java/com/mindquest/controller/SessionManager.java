@@ -13,67 +13,120 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
 public class SessionManager {
-    private Player player;
-    private QuestionBank questionBank;
-    private List<Question> currentRoundQuestions;
-    private Set<String> usedQuestionIds;
-    private String currentTopic;
-    private String currentDifficulty;
-    private int currentQuestionIndex;
-    private int globalPoints;
-    private SourceConfig sourceConfig;
+    private final Player player;
+    private final QuestionBank questionBank;
+    
+    // Thread-safe state container
+    private final AtomicReference<SessionState> state;
+
+    // Immutable state class
+    private static class SessionState {
+        final List<Question> currentRoundQuestions;
+        final Set<String> usedQuestionIds;
+        final String currentTopic;
+        final String currentDifficulty;
+        final int currentQuestionIndex;
+        final int globalPoints;
+        final SourceConfig sourceConfig;
+
+        SessionState() {
+            this(Collections.emptyList(), new HashSet<>(), null, null, 0, 0, null);
+        }
+
+        SessionState(List<Question> questions, Set<String> usedIds, String topic, String diff, int index, int points, SourceConfig config) {
+            this.currentRoundQuestions = questions != null ? Collections.unmodifiableList(new ArrayList<>(questions)) : Collections.emptyList();
+            this.usedQuestionIds = usedIds != null ? Collections.unmodifiableSet(new HashSet<>(usedIds)) : Collections.emptySet();
+            this.currentTopic = topic;
+            this.currentDifficulty = diff;
+            this.currentQuestionIndex = index;
+            this.globalPoints = points;
+            this.sourceConfig = config;
+        }
+        
+        // Helper to create a new state with updated config
+        SessionState withConfig(SourceConfig newConfig) {
+            return new SessionState(currentRoundQuestions, usedQuestionIds, currentTopic, currentDifficulty, currentQuestionIndex, globalPoints, newConfig);
+        }
+    }
 
     public SessionManager(Player player, QuestionBank questionBank) {
         this.player = player;
         this.questionBank = questionBank;
-        this.usedQuestionIds = new HashSet<>();
-        this.currentRoundQuestions = new ArrayList<>();
-        this.currentQuestionIndex = 0;
-        this.globalPoints = 0;
-        this.sourceConfig = null;
+        this.state = new AtomicReference<>(new SessionState());
     }
     
     /**
      * Sets the question source configuration for this session.
      */
     public void setSourceConfig(SourceConfig config) {
-        this.sourceConfig = config;
+        state.updateAndGet(s -> s.withConfig(config));
     }
     
     /**
      * Gets the current question source configuration.
      */
     public SourceConfig getSourceConfig() {
-        return this.sourceConfig;
+        return state.get().sourceConfig;
     }
 
     public void startNewRound(String topic, String difficulty) {
-        this.currentTopic = topic;
-        this.currentDifficulty = difficulty;
+        // Reset player for round (Note: Player is not thread-safe, assuming single-user session or external sync)
         player.resetForRound();
-        loadQuestionsForRound(topic, difficulty);
-        currentQuestionIndex = 0;
+        
+        // Load questions outside the atomic update to avoid blocking
+        List<Question> newQuestions = loadQuestionsInternal(topic, difficulty, state.get().sourceConfig);
+        
+        state.updateAndGet(s -> {
+            Set<String> newUsedIds = new HashSet<>(s.usedQuestionIds);
+            for (Question q : newQuestions) {
+                newUsedIds.add(q.getId());
+            }
+            return new SessionState(
+                newQuestions,
+                newUsedIds,
+                topic,
+                difficulty,
+                0,
+                s.globalPoints,
+                s.sourceConfig
+            );
+        });
     }
 
     /**
      * Starts a mixed-topics round using the provided configuration.
-     * Loads questions from multiple topics using a unified source and merges them.
      */
     public void startMixedTopicsRound(MixedTopicsConfig config) {
-        this.currentTopic = "Mixed Topics";
-        this.currentDifficulty = config.getDifficultyMode() == MixedTopicsConfig.DifficultyMode.UNIFIED 
-            ? "mixed" : "varied";
+        String topic = "Mixed Topics";
+        String difficulty = config.getDifficultyMode() == MixedTopicsConfig.DifficultyMode.UNIFIED ? "mixed" : "varied";
+        
         player.resetForRound();
-        loadMixedQuestionsForRound(config);
-        currentQuestionIndex = 0;
+        
+        // Load questions
+        List<Question> newQuestions = loadMixedQuestionsInternal(config, state.get().usedQuestionIds);
+        
+        state.updateAndGet(s -> {
+            Set<String> newUsedIds = new HashSet<>(s.usedQuestionIds);
+            for (Question q : newQuestions) {
+                newUsedIds.add(q.getId());
+            }
+            return new SessionState(
+                newQuestions,
+                newUsedIds,
+                topic,
+                difficulty,
+                0,
+                s.globalPoints,
+                s.sourceConfig
+            );
+        });
     }
 
-    /**
-     * Loads and merges questions from multiple topics based on MixedTopicsConfig.
-     */
-    private void loadMixedQuestionsForRound(MixedTopicsConfig config) {
+    private List<Question> loadMixedQuestionsInternal(MixedTopicsConfig config, Set<String> currentUsedIds) {
         List<String> selectedTopics = config.getSelectedTopics();
         SourceConfig sourceConfig = config.getSourceConfig();
         String difficulty = config.getDifficulty();
@@ -87,7 +140,6 @@ public class SessionManager {
             List<Question> topicQuestions;
             
             if (sourceConfig != null) {
-                
                 SourceConfig roundConfig = new SourceConfig.Builder()
                     .type(sourceConfig.getType())
                     .topic(topic)
@@ -95,7 +147,6 @@ public class SessionManager {
                     .filePath(sourceConfig.getFilePath())
                     .extraParams(sourceConfig.getExtraParams())
                     .build();
-                
                 topicQuestions = QuestionBankFactory.getQuestions(roundConfig);
             } else {
                 topicQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
@@ -109,7 +160,7 @@ public class SessionManager {
             List<Question> freshQuestions = new ArrayList<>();
             for (Question q : topicQuestions) {
                 String normalizedText = q.getQuestionText().trim().toLowerCase();
-                if (!usedQuestionIds.contains(q.getId()) && !seenQuestionTexts.contains(normalizedText)) {
+                if (!currentUsedIds.contains(q.getId()) && !seenQuestionTexts.contains(normalizedText)) {
                     freshQuestions.add(q);
                     seenQuestionTexts.add(normalizedText);
                 }
@@ -122,25 +173,18 @@ public class SessionManager {
         Random rng = new Random(config.getSeed());
         Collections.shuffle(allQuestions, rng);
         
-        currentRoundQuestions.clear();
         int count = Math.min(questionsPerRound, allQuestions.size());
-        for (int i = 0; i < count; i++) {
-            Question q = allQuestions.get(i);
-            currentRoundQuestions.add(q);
-            usedQuestionIds.add(q.getId());
-        }
-        
-        if (currentRoundQuestions.isEmpty()) {
+        if (count == 0) {
             System.out.println("[MixedMode] No questions available for mixed round!");
+            return Collections.emptyList();
         }
+        return allQuestions.subList(0, count);
     }
 
-    private void loadQuestionsForRound(String topic, String difficulty) {
+    private List<Question> loadQuestionsInternal(String topic, String difficulty, SourceConfig sourceConfig) {
         List<Question> availableQuestions;
         
-        
         if (sourceConfig != null) {
-            
             SourceConfig roundConfig = new SourceConfig.Builder()
                 .type(sourceConfig.getType())
                 .topic(topic)
@@ -148,77 +192,94 @@ public class SessionManager {
                 .filePath(sourceConfig.getFilePath())
                 .extraParams(sourceConfig.getExtraParams())
                 .build();
-            
             availableQuestions = QuestionBankFactory.getQuestions(roundConfig);
         } else {
             availableQuestions = questionBank.getQuestionsByTopicAndDifficulty(topic, difficulty);
         }
+        
         if (availableQuestions == null || availableQuestions.isEmpty()) {
             System.out.println("No questions available for " + topic + " - " + difficulty);
-            return;
+            return Collections.emptyList();
         }
+
+        // We need the current used IDs to filter, but we can't access state inside this method easily without passing it.
+        // However, we can just filter later or pass a snapshot.
+        // Let's pass a snapshot of used IDs to this method? 
+        // Actually, for simplicity, let's just filter against the *current* state at the start of this method.
+        // It's a slight race if usedIds changes, but usedIds only changes when starting a new round, which is what we are doing.
+        Set<String> usedIdsSnapshot = state.get().usedQuestionIds;
 
         List<Question> freshQuestions = new ArrayList<>();
         for (Question q : availableQuestions) {
-            if (!usedQuestionIds.contains(q.getId())) {
+            if (!usedIdsSnapshot.contains(q.getId())) {
                 freshQuestions.add(q);
             }
         }
 
         Collections.shuffle(freshQuestions);
-
-        currentRoundQuestions.clear();
-        for (int i = 0; i < Math.min(5, freshQuestions.size()); i++) {
-            currentRoundQuestions.add(freshQuestions.get(i));
-            usedQuestionIds.add(freshQuestions.get(i).getId());
-        }
+        
+        int count = Math.min(5, freshQuestions.size());
+        return freshQuestions.subList(0, count);
     }
 
     public Question getCurrentQuestion() {
-        if (currentQuestionIndex < currentRoundQuestions.size()) {
-            return currentRoundQuestions.get(currentQuestionIndex);
+        SessionState s = state.get();
+        if (s.currentQuestionIndex < s.currentRoundQuestions.size()) {
+            return s.currentRoundQuestions.get(s.currentQuestionIndex);
         }
         return null;
     }
 
     public void moveToNextQuestion() {
-        currentQuestionIndex++;
+        state.updateAndGet(s -> new SessionState(
+            s.currentRoundQuestions,
+            s.usedQuestionIds,
+            s.currentTopic,
+            s.currentDifficulty,
+            s.currentQuestionIndex + 1,
+            s.globalPoints,
+            s.sourceConfig
+        ));
     }
 
     public boolean hasMoreQuestions() {
-        return currentQuestionIndex < currentRoundQuestions.size();
+        SessionState s = state.get();
+        return s.currentQuestionIndex < s.currentRoundQuestions.size();
     }
 
     public String getCurrentTopic() {
-        return currentTopic;
+        return state.get().currentTopic;
     }
 
     public String getCurrentDifficulty() {
-        return currentDifficulty;
+        return state.get().currentDifficulty;
     }
 
     public int getGlobalPoints() {
-        return globalPoints;
+        return state.get().globalPoints;
     }
 
     public void addToGlobalPoints(int points) {
-        this.globalPoints += points;
+        state.updateAndGet(s -> new SessionState(
+            s.currentRoundQuestions,
+            s.usedQuestionIds,
+            s.currentTopic,
+            s.currentDifficulty,
+            s.currentQuestionIndex,
+            s.globalPoints + points,
+            s.sourceConfig
+        ));
     }
 
     public void resetSession() {
-        player = new Player();
-        usedQuestionIds.clear();
-        currentRoundQuestions.clear();
-        currentQuestionIndex = 0;
-        currentTopic = null;
-        currentDifficulty = null;
-        globalPoints = 0;
+        player.resetForRound(); // Note: Player reset might need its own sync if shared
+        state.set(new SessionState());
     }
 
     /**
      * Returns the number of questions loaded for the current round.
      */
     public int getCurrentRoundQuestionCount() {
-        return currentRoundQuestions == null ? 0 : currentRoundQuestions.size();
+        return state.get().currentRoundQuestions.size();
     }
 }

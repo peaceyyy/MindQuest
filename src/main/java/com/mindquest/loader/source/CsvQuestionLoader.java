@@ -181,7 +181,13 @@ public class CsvQuestionLoader implements QuestionSource {
                 }
             }
             
-            int correctIndex = Integer.parseInt(row[7].trim());
+            int correctIndex = 0;
+            try {
+                correctIndex = Integer.parseInt(row[7].trim());
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid correct index format in row: " + Arrays.toString(row));
+                return null;
+            }
             
             if (questionText.isEmpty() || choices.isEmpty()) {
                 return null;
