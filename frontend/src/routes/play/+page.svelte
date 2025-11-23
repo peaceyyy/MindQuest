@@ -1,16 +1,25 @@
+
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import HealthBar from '$lib/components/battle/HealthBar.svelte';
+	import Sprite from '$lib/components/battle/Sprite.svelte';
+	import DialogueBox from '$lib/components/battle/DialogueBox.svelte';
+	import ActionMenu from '$lib/components/battle/ActionMenu.svelte';
 	
 	// Game state
 	let sessionId = $state('');
 	let currentQuestion = $state<any>(null);
-	let selectedAnswer = $state('');
 	let feedback = $state<any>(null);
 	let loading = $state(false);
 	let error = $state('');
 	let roundComplete = $state(false);
+	
+	// Battle State
+	let playerHP = $state(100);
+	let enemyHP = $state(100);
 	
 	// Config from URL params
 	let topic = $state('');
@@ -76,7 +85,6 @@
 			loading = true;
 			error = '';
 			feedback = null;
-			selectedAnswer = '';
 			
 			const res = await fetch(`/api/sessions/${sessionId}/question`);
 			
@@ -84,12 +92,11 @@
 				// Round complete
 				roundComplete = true;
 				await loadFinalStats();
-				// Persist career points (add this round's totalPoints to stored career)
+				// Persist career points
 				try {
 					const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
 					const updated = prev + (totalPoints || 0);
 					localStorage.setItem('mindquest:careerPoints', String(updated));
-					console.log('[Play] loadQuestion - Round complete via 204, career points persisted:', { prev, totalPoints, updated });
 				} catch (e) {
 					console.warn('Failed to persist career points:', e);
 				}
@@ -110,11 +117,8 @@
 		}
 	}
 	
-	async function submitAnswer() {
-		if (!selectedAnswer) {
-			error = 'Please select an answer';
-			return;
-		}
+	async function handleAnswer(index: number) {
+		const selectedAnswer = ['A', 'B', 'C', 'D'][index];
 		
 		try {
 			loading = true;
@@ -132,20 +136,27 @@
 			feedback = result;
 			questionsAnswered++;
 			
-			// FIXED: Accumulate points instead of replacing
+			// Battle Logic
+			if (result.correct) {
+				enemyHP = Math.max(0, enemyHP - 20); // Assume 5 questions to kill
+			} else {
+				playerHP = Math.max(0, playerHP - 20); // 5 mistakes allowed
+			}
+			
+			// Accumulate points
 			totalPoints += (result.pointsAwarded || 0);
 			
 			// Check if round is complete
-			if (result.roundComplete) {
-				roundComplete = true;
-				// Persist career points on round completion
-				try {
-					const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
-					const updated = prev + (totalPoints || 0);
-					localStorage.setItem('mindquest:careerPoints', String(updated));
-					console.log('[Play] submitAnswer - Round complete, career points persisted:', { prev, totalPoints, updated });
-				} catch (e) {
-					console.warn('Failed to persist career points:', e);
+			if (result.roundComplete || playerHP === 0 || enemyHP === 0) {
+				if (result.roundComplete) {
+					roundComplete = true;
+					try {
+						const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
+						const updated = prev + (totalPoints || 0);
+						localStorage.setItem('mindquest:careerPoints', String(updated));
+					} catch (e) {
+						console.warn('Failed to persist career points:', e);
+					}
 				}
 			}
 			
@@ -178,12 +189,10 @@
 	}
 	
 	function backToHome() {
-		// Persist current round progress when quitting
 		try {
 			const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
 			const updated = prev + (totalPoints || 0);
 			localStorage.setItem('mindquest:careerPoints', String(updated));
-			console.log('[Play] backToHome - Career points persisted:', { prev, totalPoints, updated });
 		} catch (e) {
 			console.warn('Failed to persist career points on quit:', e);
 		}
@@ -191,234 +200,76 @@
 	}
 </script>
 
-<div class="container">
+<div class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col font-sans">
 	{#if loading && !currentQuestion}
-		<div class="loading">Loading game...</div>
+		<div class="flex-1 flex items-center justify-center">
+			<div class="text-2xl font-bold animate-pulse text-blue-600">Loading Battle...</div>
+		</div>
 	{:else if error && !currentQuestion}
-		<div class="error-screen">
-			<p class="error">{error}</p>
-			<button onclick={backToHome}>Back to Home</button>
+		<div class="flex-1 flex flex-col items-center justify-center text-center">
+			<p class="text-red-600 mb-4 text-xl">{error}</p>
+			<button class="px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600" onclick={backToHome}>Retreat</button>
 		</div>
 	{:else if roundComplete}
-		<div class="complete-screen">
-			<h2>Round Complete!</h2>
-			<p class="stats">Total Points: {totalPoints}</p>
-			<p class="stats">Questions Answered: {questionsAnswered}</p>
-			<button onclick={goToResults}>View Results</button>
-			<button onclick={backToHome}>Back to Home</button>
+		<div class="flex-1 flex flex-col items-center justify-center text-center space-y-8">
+			<h2 class="text-4xl font-bold text-gray-800">Battle Finished!</h2>
+			<div class="text-2xl space-y-2">
+				<p>Total Points: <span class="font-bold text-blue-600">{totalPoints}</span></p>
+				<p>Questions Answered: <span class="font-bold text-gray-600">{questionsAnswered}</span></p>
+			</div>
+			<div class="flex gap-4">
+				<button class="px-8 py-4 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={goToResults}>Victory Screen</button>
+				<button class="px-8 py-4 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={backToHome}>Return to Base</button>
+			</div>
 		</div>
 	{:else if currentQuestion}
-		<div class="game">
-			<header class="game-header">
-				<div class="info">
-					<span>Topic: {topic.toUpperCase()}</span>
-					<span>Difficulty: {difficulty}</span>
+		<!-- Battle Scene -->
+		<div class="flex-1 flex flex-col gap-4 md:gap-8 relative">
+			<!-- Header / Stats -->
+			<div class="absolute top-0 left-0 right-0 flex justify-between p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
+				<span>TOPIC: {topic.toUpperCase()}</span>
+				<button class="text-red-500 hover:underline" onclick={backToHome}>FLEE</button>
+			</div>
+
+			<!-- Enemy Zone (Top Right) -->
+			<div class="flex justify-end items-center gap-4 p-4 mt-8">
+				<div class="text-right">
+					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
+					<HealthBar current={enemyHP} max={100} label="ENEMY" color="bg-red-500" />
 				</div>
-				<div class="stats-bar">
-					<span>Points: {totalPoints}</span>
-					<span>Answered: {questionsAnswered}</span>
-					<button class="quit-btn" onclick={backToHome}>Quit Game</button>
-				</div>
-			</header>
+				<Sprite src="https://placehold.co/150x150/png?text=Enemy" alt="Enemy" isEnemy={true} />
+			</div>
 
-			<div class="question-card">
-				<p class="question-text">{currentQuestion.questionText}</p>
-
-				<div class="choices">
-					{#each currentQuestion.choices as choice, index}
-						<label class="choice">
-							<input
-								type="radio"
-								name="answer"
-								value={['A', 'B', 'C', 'D'][index]}
-								bind:group={selectedAnswer}
-								disabled={feedback !== null}
-							/>
-							<span class="choice-label">
-								{['A', 'B', 'C', 'D'][index]}. {choice}
-							</span>
-						</label>
-					{/each}
-				</div>
-
-				{#if feedback}
-					<div class="feedback {feedback.correct ? 'correct' : 'incorrect'}">
-						<p>{feedback.correct ? '✓ Correct!' : '✗ Incorrect'}</p>
-						<p>Points: {feedback.pointsAwarded}</p>
-						{#if !feedback.correct}
-							<p>Correct answer: {['A', 'B', 'C', 'D'][feedback.correctIndex]}</p>
-						{/if}
-					</div>
-				{/if}
-
-				{#if error}
-					<p class="error">{error}</p>
-				{/if}
-
-				<div class="actions">
-					{#if !feedback}
-						<button onclick={submitAnswer} disabled={loading || !selectedAnswer}>
-							{loading ? 'Submitting...' : 'Submit Answer'}
-						</button>
-					{:else}
-						<button onclick={nextQuestion} disabled={loading}>
-							{loading ? 'Loading...' : 'Next Question'}
-						</button>
-					{/if}
+			<!-- Player Zone (Bottom Left) -->
+			<div class="flex justify-start items-center gap-4 p-4 mt-auto mb-4">
+				<Sprite src="https://placehold.co/150x150/png?text=Player" alt="Player" />
+				<div>
+					<h3 class="font-bold text-lg md:text-xl text-blue-600 tracking-widest">YOU</h3>
+					<HealthBar current={playerHP} max={100} label="HP" color="bg-green-500" />
 				</div>
 			</div>
+		</div>
+
+		<!-- UI Zone -->
+		<div class="mt-4 space-y-4 pb-8">
+			<DialogueBox text={feedback ? (feedback.correct ? "Critical Hit! You dealt damage!" : `Missed! The answer was ${['A', 'B', 'C', 'D'][feedback.correctIndex]}.`) : currentQuestion.questionText} />
+			
+			{#if !feedback}
+				<ActionMenu 
+					choices={currentQuestion.choices} 
+					onSelect={handleAnswer} 
+					disabled={loading} 
+				/>
+			{:else}
+				<button 
+					class="w-full py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 animate-bounce"
+					onclick={nextQuestion}
+				>
+					CONTINUE BATTLE
+				</button>
+			{/if}
 		</div>
 	{/if}
 </div>
 
-<style>
-	.container {
-		max-width: 800px;
-		margin: 2rem auto;
-		padding: 1rem;
-	}
 
-	.loading,
-	.error-screen,
-	.complete-screen {
-		text-align: center;
-		padding: 3rem 1rem;
-	}
-
-	.error {
-		color: #dc2626;
-		margin-bottom: 1rem;
-	}
-
-	.game-header {
-		display: flex;
-		justify-content: space-between;
-		margin-bottom: 2rem;
-		padding-bottom: 1rem;
-		border-bottom: 1px solid #e5e7eb;
-	}
-
-	.info,
-	.stats-bar {
-		display: flex;
-		align-items: center;
-		gap: 1.5rem;
-		font-size: 0.875rem;
-	}
-
-	.quit-btn {
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		background: #ef4444;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background 0.2s;
-	}
-
-	.quit-btn:hover {
-		background: #dc2626;
-	}
-
-	.question-card {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 8px;
-		padding: 2rem;
-	}
-
-	.question-text {
-		font-size: 1.25rem;
-		font-weight: 500;
-		margin-bottom: 2rem;
-		line-height: 1.6;
-	}
-
-	.choices {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		margin-bottom: 2rem;
-	}
-
-	.choice {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 1rem;
-		background: white;
-		border: 2px solid #e5e7eb;
-		border-radius: 6px;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.choice:hover {
-		border-color: #3b82f6;
-		background: #eff6ff;
-	}
-
-	.choice input[type="radio"] {
-		width: 18px;
-		height: 18px;
-	}
-
-	.choice-label {
-		flex: 1;
-		font-size: 1rem;
-	}
-
-	.feedback {
-		padding: 1rem;
-		border-radius: 6px;
-		margin-bottom: 1.5rem;
-	}
-
-	.feedback.correct {
-		background: #d1fae5;
-		color: #065f46;
-	}
-
-	.feedback.incorrect {
-		background: #fee2e2;
-		color: #991b1b;
-	}
-
-	.actions {
-		display: flex;
-		gap: 1rem;
-	}
-
-	button {
-		flex: 1;
-		padding: 0.875rem 1.5rem;
-		font-size: 1rem;
-		font-weight: 600;
-		background: #3b82f6;
-		color: white;
-		border: none;
-		border-radius: 6px;
-		cursor: pointer;
-	}
-
-	button:hover:not(:disabled) {
-		background: #2563eb;
-	}
-
-	button:disabled {
-		background: #9ca3af;
-		cursor: not-allowed;
-	}
-
-	.stats {
-		font-size: 1.25rem;
-		margin: 0.5rem 0;
-	}
-
-	h2 {
-		font-size: 2rem;
-		margin-bottom: 1.5rem;
-	}
-</style>
