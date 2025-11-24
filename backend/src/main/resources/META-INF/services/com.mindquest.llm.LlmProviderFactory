@@ -1,0 +1,2 @@
+com.mindquest.llm.providers.MockProviderFactory
+com.mindquest.llm.providers.GeminiProviderFactory

@@ -1,0 +1,56 @@
+{
+  "topic": "Philosophy",
+  "difficulty": "Medium",
+  "questions": [
+    {
+      "questionText": "What is Descartes' famous statement 'Cogito, ergo sum' in English?",
+      "choices": [
+        "I believe, therefore I am",
+        "I think, therefore I am",
+        "I exist, therefore I think",
+        "I doubt, therefore I know"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "What is utilitarianism?",
+      "choices": [
+        "The belief that actions are right if they benefit the majority",
+        "The belief in absolute moral rules",
+        "The belief in divine command",
+        "The belief in individual rights above all"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionText": "Who is associated with the concept of the 'categorical imperative'?",
+      "choices": [
+        "John Stuart Mill",
+        "Immanuel Kant",
+        "Friedrich Nietzsche",
+        "David Hume"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "What is solipsism?",
+      "choices": [
+        "The belief that only one's own mind is sure to exist",
+        "The belief in multiple gods",
+        "The belief in social contracts",
+        "The belief in empirical evidence"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionText": "What does 'a priori' knowledge mean?",
+      "choices": [
+        "Knowledge gained through experience",
+        "Knowledge independent of experience",
+        "Knowledge from authority",
+        "Knowledge from intuition only"
+      ],
+      "correctIndex": 1
+    }
+  ]
+}

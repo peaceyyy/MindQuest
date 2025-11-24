@@ -1,0 +1,7 @@
+topic,difficulty,questionText,choice0,choice1,choice2,choice3,correctIndex
+test_topic,Easy,What is the capital of France?,London,Paris,Berlin,Madrid,1
+test_topic,Easy,What is 2 + 2?,3,4,5,6,1
+test_topic,Medium,Who wrote Hamlet?,Dickens,Shakespeare,Hemingway,Orwell,1
+test_topic,Medium,What is the speed of light in m/s?,299792458,300000000,299000000,301000000,0
+test_topic,Hard,What year was the Magna Carta signed?,1205,1215,1225,1235,1
+test_topic,Hard,What is the 10th Fibonacci number?,34,55,89,144,1

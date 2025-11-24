@@ -1,0 +1,239 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.mindquest</groupId>
+    <artifactId>mindquest</artifactId>
+    <version>0.1.0</version>
+    <packaging>jar</packaging>
+
+    <name>MindQuest</name>
+    <description>MindQuest - Console-based Learning</description>
+
+    <properties>
+        <!-- Use Java 17 -->
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Javalin for lightweight web server -->
+        <dependency>
+            <groupId>io.javalin</groupId>
+            <artifactId>javalin</artifactId>
+            <version>6.7.0</version>
+        </dependency>
+        <!-- SLF4J Simple for logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.7</version>
+        </dependency>
+
+        <!-- Jackson for JSON serialization -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.2</version>
+        </dependency>
+
+        <!-- Google GenAI SDK for Gemini API -->
+        <dependency>
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.27.0</version>
+        </dependency>
+
+        <!-- Gson for JSON parsing when you migrate to JSON files or API responses -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        
+        <!-- OpenCSV for robust CSV parsing -->
+        <dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>5.7.1</version>
+        </dependency>
+
+        <!-- Apache POI for Excel (.xls / .xlsx) support -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+
+        <!-- JUnit 5 for unit testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.9.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Include questions directory as a resource -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/questions</directory>
+                <targetPath>questions</targetPath>
+                <includes>
+                    <include>**/*.json</include>
+                    <include>**/*.csv</include>
+                    <include>**/*.xlsx</include>
+                </includes>
+            </resource>
+            <!-- Bundle built frontend (Svelte/Vite output) into JAR under /static if present -->
+            <resource>
+                <directory>frontend/dist</directory>
+                <targetPath>static</targetPath>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        
+        <plugins>
+            <!-- Ensure proper Java compilation level -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+
+            <!-- Exec plugin: run the application using `mvn exec:java` -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <!-- Your main class is in package `com.mindquest` and class `Main` -->
+                    <mainClass>com.mindquest.Main</mainClass>
+                </configuration>
+                <!-- Frontend build executions moved to a profile (see below) -->
+            </plugin>
+
+            <!-- Shade plugin: create an executable fat JAR if you want to package the app -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <!-- Default shaded JAR (CLI) -->
+                    <execution>
+                        <id>shade-cli</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.mindquest.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                        </configuration>
+                    </execution>
+
+                    <!-- Additional shaded JAR for the HTTP server (attached with classifier 'server') -->
+                    <execution>
+                        <id>shade-server</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>server</shadedClassifierName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.mindquest.server.GameServer</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      Profile to run frontend install/build using Bun (or npm/yarn).
+      This profile is disabled by default to avoid failing backend-only builds
+      when frontend tooling is not present. Enable with:
+
+        mvn clean package -DskipTests -Dbuild.frontend=true
+
+    -->
+    <profiles>
+        <profile>
+            <id>frontend-build</id>
+            <activation>
+                <property>
+                    <name>build.frontend</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>frontend-install</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bun</executable>
+                                    <workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+                                    <arguments>
+                                        <argument>install</argument>
+                                    </arguments>
+                                    <ignoreErrors>false</ignoreErrors>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>frontend-build</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bun</executable>
+                                    <workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+                                    <arguments>
+                                        <argument>run</argument>
+                                        <argument>build</argument>
+                                    </arguments>
+                                    <ignoreErrors>false</ignoreErrors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

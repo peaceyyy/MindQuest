@@ -29,6 +29,19 @@
 	let totalPoints = $state(0);
 	let questionsAnswered = $state(0);
 	
+	// Sprite paths based on difficulty
+	let playerSprite = $derived(`/sprites/player/player-lv${getDifficultyLevel(difficulty)}.png`);
+	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
+	
+	function getDifficultyLevel(diff: string): number {
+		switch (diff.toLowerCase()) {
+			case 'easy': return 1;
+			case 'medium': return 2;
+			case 'hard': return 3;
+			default: return 1;
+		}
+	}
+	
 	onMount(async () => {
 		// Get topic & difficulty from URL params
 		topic = page.url.searchParams.get('topic') || 'ai';
@@ -237,12 +250,12 @@
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
 					<HealthBar current={enemyHP} max={100} label="ENEMY" color="bg-red-500" />
 				</div>
-				<Sprite src="https://placehold.co/150x150/png?text=Enemy" alt="Enemy" isEnemy={true} />
+				<Sprite src={enemySprite} alt="{topic} Boss" isEnemy={true} />
 			</div>
 
 			<!-- Player Zone (Bottom Left) -->
 			<div class="flex justify-start items-center gap-4 p-4 mt-auto mb-4">
-				<Sprite src="https://placehold.co/150x150/png?text=Player" alt="Player" />
+				<Sprite src={playerSprite} alt="Player" />
 				<div>
 					<h3 class="font-bold text-lg md:text-xl text-blue-600 tracking-widest">YOU</h3>
 					<HealthBar current={playerHP} max={100} label="HP" color="bg-green-500" />
