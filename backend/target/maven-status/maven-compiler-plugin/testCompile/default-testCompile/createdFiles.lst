@@ -1,6 +1,0 @@
-com\mindquest\loader\LoaderDiagnosticTest.class
-com\mindquest\loader\TopicScannerTest.class
-com\mindquest\loader\ExternalSourceTest.class
-com\mindquest\tests\QuestionSourceTest.class
-com\mindquest\tests\JsonLoaderQuickTest.class
-com\mindquest\llm\GeminiQuestionTest.class

@@ -8,6 +8,7 @@
 	import Sprite from '$lib/components/battle/Sprite.svelte';
 	import DialogueBox from '$lib/components/battle/DialogueBox.svelte';
 	import ActionMenu from '$lib/components/battle/ActionMenu.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	
 	// Game state
 	let sessionId = $state('');
@@ -28,6 +29,10 @@
 	// Stats
 	let totalPoints = $state(0);
 	let questionsAnswered = $state(0);
+	
+	// Dialog state
+	let showFleeConfirm = $state(false);
+	let fleeLoading = $state(false);
 	
 	// Sprite paths based on difficulty
 	let playerSprite = $derived(`/sprites/player/player-lv${getDifficultyLevel(difficulty)}.png`);
@@ -201,6 +206,33 @@
 		goto(`/results?points=${totalPoints}&answered=${questionsAnswered}`);
 	}
 	
+	function showFleeDialog() {
+		showFleeConfirm = true;
+	}
+	
+	async function confirmFlee() {
+		try {
+			fleeLoading = true;
+			error = '';
+			
+			// Call backend to rollback the round (no points awarded)
+			const res = await fetch(`/api/sessions/${sessionId}/abandon`, {
+				method: 'POST'
+			});
+			
+			if (!res.ok) throw new Error('Failed to abandon round');
+			
+			const result = await res.json();
+			console.log('Round abandoned:', result);
+			
+			// Navigate home without adding points
+			goto('/');
+		} catch (err: any) {
+			error = err.message || 'Failed to flee';
+			fleeLoading = false;
+		}
+	}
+	
 	function backToHome() {
 		try {
 			const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
@@ -241,7 +273,7 @@
 			<!-- Header / Stats -->
 			<div class="absolute top-0 left-0 right-0 flex justify-between p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
 				<span>TOPIC: {topic.toUpperCase()}</span>
-				<button class="text-red-500 hover:underline" onclick={backToHome}>FLEE</button>
+				<button class="text-red-500 hover:underline" onclick={showFleeDialog}>FLEE</button>
 			</div>
 
 			<!-- Enemy Zone (Top Right) -->
@@ -284,5 +316,18 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Flee Confirmation Dialog -->
+<ConfirmDialog 
+	open={showFleeConfirm}
+	title="Abandon Battle?"
+	message="If you flee now, you won't receive any points for this round. Are you sure?"
+	confirmText="Flee"
+	cancelText="Stay and Fight"
+	isDangerous={true}
+	onConfirm={confirmFlee}
+	onCancel={() => showFleeConfirm = false}
+	isLoading={fleeLoading}
+/>
 
 
