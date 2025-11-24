@@ -1,3 +1,5 @@
+package com.mindquest.tests;
+
 import com.mindquest.loader.source.JsonQuestionLoader;
 import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.model.question.Question;

@@ -1,0 +1,56 @@
+{
+  "topic": "Philosophy",
+  "difficulty": "Hard",
+  "questions": [
+    {
+      "questionText": "What is the 'problem of induction' as described by David Hume?",
+      "choices": [
+        "The difficulty of proving future events will resemble past events",
+        "The challenge of teaching logic",
+        "The impossibility of moral certainty",
+        "The conflict between science and religion"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionText": "What is existentialism primarily concerned with?",
+      "choices": [
+        "The existence of God",
+        "Individual freedom, choice, and responsibility",
+        "Social justice",
+        "Scientific progress"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "questionText": "What is the 'Ship of Theseus' paradox, and what philosophical concept does it explore?",
+      "choices": [
+        "A thought experiment about identity, asking if an object remains the same after all its components are replaced",
+        "A paradox about time travel, exploring causality",
+        "A moral dilemma about sacrifice, exploring ethics",
+        "A logical puzzle about infinite regress, exploring epistemology"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionText": "What is Nietzsche's concept of the 'Übermensch' (Overman)?",
+      "choices": [
+        "A superhuman being who creates their own values beyond conventional morality",
+        "A political leader with absolute power",
+        "An ideal form in Plato's philosophy",
+        "A religious prophet"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionText": "What is the 'mind-body problem' in philosophy of mind?",
+      "choices": [
+        "The question of how mental states relate to physical states",
+        "The difficulty of maintaining physical health",
+        "The challenge of meditation",
+        "The conflict between emotion and reason"
+      ],
+      "correctIndex": 0
+    }
+  ]
+}

@@ -127,42 +127,7 @@
                     <!-- Your main class is in package `com.mindquest` and class `Main` -->
                     <mainClass>com.mindquest.Main</mainClass>
                 </configuration>
-                <executions>
-                    <!-- Install frontend dependencies (Bun) -->
-                    <execution>
-                        <id>frontend-install</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bun</executable>
-                            <workingDirectory>${project.basedir}/frontend</workingDirectory>
-                            <arguments>
-                                <argument>install</argument>
-                            </arguments>
-                            <!-- Allow build to continue if Bun not installed (CI can add Bun later) -->
-                            <ignoreErrors>true</ignoreErrors>
-                        </configuration>
-                    </execution>
-                    <!-- Build frontend static assets -->
-                    <execution>
-                        <id>frontend-build</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bun</executable>
-                            <workingDirectory>${project.basedir}/frontend</workingDirectory>
-                            <arguments>
-                                <argument>run</argument>
-                                <argument>build</argument>
-                            </arguments>
-                            <ignoreErrors>true</ignoreErrors>
-                        </configuration>
-                    </execution>
-                </executions>
+                <!-- Frontend build executions moved to a profile (see below) -->
             </plugin>
 
             <!-- Shade plugin: create an executable fat JAR if you want to package the app -->
@@ -171,7 +136,9 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.0</version>
                 <executions>
+                    <!-- Default shaded JAR (CLI) -->
                     <execution>
+                        <id>shade-cli</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
@@ -182,10 +149,91 @@
                                     <mainClass>com.mindquest.Main</mainClass>
                                 </transformer>
                             </transformers>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                        </configuration>
+                    </execution>
+
+                    <!-- Additional shaded JAR for the HTTP server (attached with classifier 'server') -->
+                    <execution>
+                        <id>shade-server</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>server</shadedClassifierName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.mindquest.server.GameServer</mainClass>
+                                </transformer>
+                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
+
+    <!--
+      Profile to run frontend install/build using Bun (or npm/yarn).
+      This profile is disabled by default to avoid failing backend-only builds
+      when frontend tooling is not present. Enable with:
+
+        mvn clean package -DskipTests -Dbuild.frontend=true
+
+    -->
+    <profiles>
+        <profile>
+            <id>frontend-build</id>
+            <activation>
+                <property>
+                    <name>build.frontend</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>frontend-install</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bun</executable>
+                                    <workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+                                    <arguments>
+                                        <argument>install</argument>
+                                    </arguments>
+                                    <ignoreErrors>false</ignoreErrors>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>frontend-build</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bun</executable>
+                                    <workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+                                    <arguments>
+                                        <argument>run</argument>
+                                        <argument>build</argument>
+                                    </arguments>
+                                    <ignoreErrors>false</ignoreErrors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
