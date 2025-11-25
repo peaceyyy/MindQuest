@@ -1,0 +1,108 @@
+*.class
+###############################
+# MindQuest Root .gitignore
+# Backend (Maven/Java) + Frontend (Svelte/Vite/Bun)
+# Keep this focused: ignore build artifacts & editor cruft, track source & config.
+###############################
+
+# Maven build output
+**/target/
+**/target/*.jar
+**/target/**/*.jar
+dependency-reduced-pom.xml
+target/
+
+# IDE/editor
+.idea/
+*.iml
+.vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Frontend dependencies & build artifacts
+/frontend/node_modules/
+/frontend/.svelte-kit/
+/frontend/.bun/
+/frontend/dist/
+/frontend/build/
+
+# Frontend temporary caches (Vite, SvelteKit)
+/frontend/.vite/
+
+# Environment & secrets (commit sample env separately if needed)
+.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+/frontend/.env
+
+# IDE/editor settings (optional to keep .vscode tasks if you prefer) 
+.vscode/
+.idea/
+*.iml
+*.md
+# OS / miscellaneous
+.DS_Store
+Thumbs.db
+
+# Coverage / reports
+coverage/
+/frontend/coverage/
+
+# Generated resources (will be copied into JAR via Maven resources config)
+/src/main/resources/static/
+
+# Node / Bun lockfiles – keep for reproducibility (do NOT ignore)
+# bun.lockb, bun.lock, package-lock.json, pnpm-lock.yaml, yarn.lock SHOULD be committed.
+# If you decide to ignore them later, remove this comment and add patterns.
+
+# GitHub workflows directory should be tracked if added
+# (remove the next line if you create .github directory)
+.github/  
+
+# Ignore temporary scratch or local experiment directories
+scratch/
+temp/
+tmp/
+
+# Prevent accidental commits of archive dumps
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Prevent committing large dataset exports
+datasets/
+docs/
+
+# Logs & local debug artifacts
+debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# NOTE: keep project docs tracked. (previously ignored accidentally)
+
+# Frontend local config & caches (safe to ignore)
+/frontend/.npmrc
+/frontend/.env.local
+/frontend/.env.*.local
+/frontend/.prettiercache
+/frontend/.cache/
+/frontend/.DS_Store
+
+# Svelte / Vite outputs (already covered but keep safe patterns)
+/frontend/.output
+/frontend/.vercel
+/frontend/.netlify
+/frontend/.wrangler
+/frontend/.svelte-kit
+/frontend/build
+/frontend/.prettierignore
+
+# Vite timestamp files sometimes added by tools
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
