@@ -1,8 +1,15 @@
 <script lang="ts">
-	let { src, alt, isEnemy = false } = $props();
+	interface Props {
+		src: string;
+		alt: string;
+		isEnemy?: boolean;
+		spriteRef?: HTMLDivElement | null;
+	}
+	
+	let { src, alt, isEnemy = false, spriteRef = $bindable(null) }: Props = $props();
 </script>
 
-<div class="sprite-container">
+<div class="sprite-container" bind:this={spriteRef}>
 	<!-- Shadow -->
 	<div class="sprite-shadow"></div>
 	

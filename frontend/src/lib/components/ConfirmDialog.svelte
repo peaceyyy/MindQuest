@@ -31,7 +31,7 @@
 			if (onConfirm) {
 				await onConfirm();
 			}
-			open = false;
+			// Don't mutate props - let parent control 'open' state
 		} finally {
 			loading = false;
 		}
@@ -41,7 +41,7 @@
 		if (onCancel) {
 			onCancel();
 		}
-		open = false;
+		// Don't mutate props - let parent control 'open' state
 	}
 	
 	// Handle ESC key to close

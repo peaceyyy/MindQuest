@@ -63,6 +63,7 @@ public class GameServer {
             app.get("/api/sessions/{id}/question", GameServer::getCurrentQuestion);
             app.post("/api/sessions/{id}/answer", GameServer::submitAnswer);
             app.get("/api/sessions/{id}/state", GameServer::getSessionState);
+            app.post("/api/sessions/{id}/abandon", GameServer::abandonRound);
             
             System.out.println("===================================");
             System.out.println("Game Server started on port " + port);
@@ -225,6 +226,23 @@ public class GameServer {
             "globalPoints", gameService.getGlobalPoints(),
             "topic", gameService.getCurrentTopic() != null ? gameService.getCurrentTopic() : "None",
             "hasMore", gameService.hasMoreQuestions()
+        ));
+    }
+
+    private static void abandonRound(Context ctx) {
+        String sessionId = ctx.pathParam("id");
+        GameService gameService = sessions.get(sessionId);
+        if (gameService == null) {
+            ctx.status(404).result("Session not found");
+            return;
+        }
+        
+        // Rollback the round (no points awarded)
+        gameService.rollbackRound();
+        
+        ctx.json(Map.of(
+            "message", "Round abandoned successfully",
+            "globalPoints", gameService.getGlobalPoints()
         ));
     }
 

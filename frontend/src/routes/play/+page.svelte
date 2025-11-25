@@ -9,6 +9,9 @@
 	import DialogueBox from '$lib/components/battle/DialogueBox.svelte';
 	import ActionMenu from '$lib/components/battle/ActionMenu.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
+	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
+	import { sounds } from '$lib/audio/SoundManager';
 	
 	// Game state
 	let sessionId = $state('');
@@ -18,9 +21,11 @@
 	let error = $state('');
 	let roundComplete = $state(false);
 	
-	// Battle State
+	// Battle State - now synced with backend
 	let playerHP = $state(100);
+	let playerMaxHP = $state(100);
 	let enemyHP = $state(100);
+	let enemyMaxHP = $state(100);
 	
 	// Config from URL params
 	let topic = $state('');
@@ -34,9 +39,37 @@
 	let showFleeConfirm = $state(false);
 	let fleeLoading = $state(false);
 	
+	// Animation refs
+	let battleContainerRef: HTMLDivElement | null = $state(null);
+	let playerSpriteRef: HTMLDivElement | null = $state(null);
+	let enemySpriteRef: HTMLDivElement | null = $state(null);
+	let playerHpBarRef: HTMLDivElement | null = $state(null);
+	let enemyHpBarRef: HTMLDivElement | null = $state(null);
+	
+	// Damage popup state
+	let damagePopups = $state<Array<{
+		id: number;
+		damage: number;
+		x: number;
+		y: number;
+		isCrit: boolean;
+		isHeal: boolean;
+	}>>([]);
+	let popupIdCounter = $state(0);
+	
 	// Sprite paths based on difficulty
 	let playerSprite = $derived(`/sprites/player/player-lv${getDifficultyLevel(difficulty)}.png`);
 	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
+	
+	// Enemy damage per correct answer (scales with difficulty)
+	let enemyDamagePerHit = $derived(() => {
+		switch (difficulty.toLowerCase()) {
+			case 'easy': return 25;   // 4 correct answers to win
+			case 'medium': return 20; // 5 correct answers to win
+			case 'hard': return 15;   // ~7 correct answers to win
+			default: return 20;
+		}
+	});
 	
 	function getDifficultyLevel(diff: string): number {
 		switch (diff.toLowerCase()) {
@@ -45,6 +78,70 @@
 			case 'hard': return 3;
 			default: return 1;
 		}
+	}
+	
+	// Add damage popup at sprite position
+	function showDamagePopup(targetRef: HTMLDivElement | null, damage: number, isCrit = false, isHeal = false) {
+		if (!targetRef) return;
+		
+		const rect = targetRef.getBoundingClientRect();
+		const containerRect = battleContainerRef?.getBoundingClientRect();
+		
+		// Position relative to battle container
+		const x = rect.left - (containerRect?.left || 0) + rect.width / 2;
+		const y = rect.top - (containerRect?.top || 0);
+		
+		const popup = {
+			id: popupIdCounter++,
+			damage,
+			x,
+			y,
+			isCrit,
+			isHeal
+		};
+		
+		damagePopups = [...damagePopups, popup];
+	}
+	
+	function removeDamagePopup(id: number) {
+		damagePopups = damagePopups.filter(p => p.id !== id);
+	}
+	
+	// Play attack animation sequence
+	async function playPlayerAttackAnimation(damage: number) {
+		// Player lunges forward
+		attackLunge(playerSpriteRef, 'right', 40);
+		
+		// Short delay, then enemy gets hit
+		await new Promise(r => setTimeout(r, 150));
+		
+		// Enemy flash and knockback
+		flashElement(enemySpriteRef, 'white', 0.1, 2);
+		knockback(enemySpriteRef, 'right', 25);
+		hpBarDamageFlash(enemyHpBarRef);
+		
+		// Show damage popup on enemy
+		showDamagePopup(enemySpriteRef, damage);
+		
+		// Play hit sound
+		sounds.play('hit');
+	}
+	
+	// Play damage received animation
+	async function playPlayerDamageAnimation(damage: number) {
+		// Screen shake
+		screenShake(battleContainerRef, 10, 0.4);
+		
+		// Player flash and knockback
+		flashElement(playerSpriteRef, 'red', 0.12, 3);
+		knockback(playerSpriteRef, 'left', 20);
+		hpBarDamageFlash(playerHpBarRef);
+		
+		// Show damage popup on player
+		showDamagePopup(playerSpriteRef, damage);
+		
+		// Play damage sound
+		sounds.play('wrong');
 	}
 	
 	onMount(async () => {
@@ -154,11 +251,37 @@
 			feedback = result;
 			questionsAnswered++;
 			
-			// Battle Logic
+			// Use backend HP for player damage (authoritative)
 			if (result.correct) {
-				enemyHP = Math.max(0, enemyHP - 20); // Assume 5 questions to kill
+				// Player attacks enemy - frontend-managed enemy HP
+				const damageToEnemy = enemyDamagePerHit();
+				enemyHP = Math.max(0, enemyHP - damageToEnemy);
+				
+				// Play attack animation
+				await playPlayerAttackAnimation(damageToEnemy);
+				sounds.play('correct');
+				
+				// Check for enemy defeat
+				if (enemyHP === 0) {
+					await new Promise(r => setTimeout(r, 300));
+					victoryPose(playerSpriteRef);
+					defeatAnimation(enemySpriteRef);
+					sounds.play('victory');
+				}
 			} else {
-				playerHP = Math.max(0, playerHP - 20); // 5 mistakes allowed
+				// Player takes damage - use backend's calculated damage
+				const damageTaken = result.damageTaken || 20;
+				playerHP = result.currentHp; // Sync with backend HP
+				
+				// Play damage animation
+				await playPlayerDamageAnimation(damageTaken);
+				
+				// Check for player defeat
+				if (playerHP === 0) {
+					await new Promise(r => setTimeout(r, 300));
+					defeatAnimation(playerSpriteRef);
+					sounds.play('defeat');
+				}
 			}
 			
 			// Accumulate points
@@ -166,7 +289,7 @@
 			
 			// Check if round is complete
 			if (result.roundComplete || playerHP === 0 || enemyHP === 0) {
-				if (result.roundComplete) {
+				if (result.roundComplete || enemyHP === 0) {
 					roundComplete = true;
 					try {
 						const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
@@ -175,6 +298,10 @@
 					} catch (e) {
 						console.warn('Failed to persist career points:', e);
 					}
+				} else if (playerHP === 0) {
+					// Player defeated - mark round as failed
+					roundComplete = true;
+					// Don't save points on defeat
 				}
 			}
 			
@@ -225,12 +352,20 @@
 			const result = await res.json();
 			console.log('Round abandoned:', result);
 			
-			// Navigate home without adding points
-			goto('/');
 		} catch (err: any) {
+			console.error('Failed to flee:', err);
 			error = err.message || 'Failed to flee';
 			fleeLoading = false;
+			showFleeConfirm = false;
+			return; // Don't navigate if there was an error
+		} finally {
+			// Always clean up state and navigate on success
+			fleeLoading = false;
+			showFleeConfirm = false;
 		}
+		
+		// Navigate after dialog is closed and state is reset
+		goto('/');
 	}
 	
 	function backToHome() {
@@ -257,19 +392,39 @@
 		</div>
 	{:else if roundComplete}
 		<div class="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-			<h2 class="text-4xl font-bold text-gray-800">Battle Finished!</h2>
+			{#if playerHP > 0}
+				<h2 class="text-4xl font-bold text-green-600">Victory!</h2>
+				<p class="text-gray-600">You defeated the {topic.toUpperCase()} Boss!</p>
+			{:else}
+				<h2 class="text-4xl font-bold text-red-600">Defeated...</h2>
+				<p class="text-gray-600">The {topic.toUpperCase()} Boss was too strong this time.</p>
+			{/if}
 			<div class="text-2xl space-y-2">
 				<p>Total Points: <span class="font-bold text-blue-600">{totalPoints}</span></p>
 				<p>Questions Answered: <span class="font-bold text-gray-600">{questionsAnswered}</span></p>
 			</div>
 			<div class="flex gap-4">
-				<button class="px-8 py-4 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={goToResults}>Victory Screen</button>
+				{#if playerHP > 0}
+					<button class="px-8 py-4 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={goToResults}>Victory Screen</button>
+				{/if}
 				<button class="px-8 py-4 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={backToHome}>Return to Base</button>
 			</div>
 		</div>
 	{:else if currentQuestion}
 		<!-- Battle Scene -->
-		<div class="flex-1 flex flex-col gap-4 md:gap-8 relative">
+		<div class="flex-1 flex flex-col gap-4 md:gap-8 relative" bind:this={battleContainerRef}>
+			<!-- Damage Popups Layer -->
+			{#each damagePopups as popup (popup.id)}
+				<DamagePopup 
+					damage={popup.damage}
+					x={popup.x}
+					y={popup.y}
+					isCrit={popup.isCrit}
+					isHeal={popup.isHeal}
+					onComplete={() => removeDamagePopup(popup.id)}
+				/>
+			{/each}
+			
 			<!-- Header / Stats -->
 			<div class="absolute top-0 left-0 right-0 flex justify-between p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
 				<span>TOPIC: {topic.toUpperCase()}</span>
@@ -280,17 +435,17 @@
 			<div class="flex justify-end items-center gap-4 p-4 mt-8">
 				<div class="text-right">
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
-					<HealthBar current={enemyHP} max={100} label="ENEMY" color="bg-red-500" />
+					<HealthBar current={enemyHP} max={enemyMaxHP} label="ENEMY" color="bg-red-500" bind:barRef={enemyHpBarRef} />
 				</div>
-				<Sprite src={enemySprite} alt="{topic} Boss" isEnemy={true} />
+				<Sprite src={enemySprite} alt="{topic} Boss" isEnemy={true} bind:spriteRef={enemySpriteRef} />
 			</div>
 
 			<!-- Player Zone (Bottom Left) -->
 			<div class="flex justify-start items-center gap-4 p-4 mt-auto mb-4">
-				<Sprite src={playerSprite} alt="Player" />
+				<Sprite src={playerSprite} alt="Player" bind:spriteRef={playerSpriteRef} />
 				<div>
 					<h3 class="font-bold text-lg md:text-xl text-blue-600 tracking-widest">YOU</h3>
-					<HealthBar current={playerHP} max={100} label="HP" color="bg-green-500" />
+					<HealthBar current={playerHP} max={playerMaxHP} label="HP" color="bg-green-500" bind:barRef={playerHpBarRef} />
 				</div>
 			</div>
 		</div>
