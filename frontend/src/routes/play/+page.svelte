@@ -10,6 +10,7 @@
 	import ActionMenu from '$lib/components/battle/ActionMenu.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
+	import AccuracyGauge from '$lib/components/battle/AccuracyGauge.svelte';
 	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
 	import { sounds } from '$lib/audio/SoundManager';
 	
@@ -36,6 +37,11 @@
 	let totalPoints = $state(0);
 	let questionsAnswered = $state(0);
 	let roundSummary = $state<any>(null);
+	
+	// Live accuracy tracking for gauge widget
+	let correctAnswers = $state(0);
+	let incorrectAnswers = $state(0);
+	let currentAccuracy = $state(0); // Percentage (0-100)
 	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
@@ -65,6 +71,19 @@
 	let playerSprite = $derived(`/sprites/player/player-lv1.png`);
 	// Enemys Sprite paths based on difficulty
 	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
+	
+	// Accuracy threshold for victory (inverted model)
+	// Easy: 70% (you should know this!)
+	// Medium: 60% (balanced)
+	// Hard: 50% (forgiving - questions are hard)
+	let accuracyThreshold = $derived(() => {
+		switch (difficulty.toLowerCase()) {
+			case 'easy': return 70;
+			case 'medium': return 60;
+			case 'hard': return 50;
+			default: return 60;
+		}
+	});
 	
 	// Enemy damage per correct answer (INVERTED MODEL - scales with difficulty)
 	// Hard enemies have MORE HP, requiring more hits to defeat
@@ -295,6 +314,17 @@
 			const result = await res.json();
 			feedback = result;
 			questionsAnswered++;
+			
+			// Update live accuracy tracking from backend
+			if (result.correctAnswers !== undefined) {
+				correctAnswers = result.correctAnswers;
+			}
+			if (result.incorrectAnswers !== undefined) {
+				incorrectAnswers = result.incorrectAnswers;
+			}
+			if (result.currentAccuracy !== undefined) {
+				currentAccuracy = result.currentAccuracy;
+			}
 			
 			// Use backend HP for player damage (authoritative)
 			if (result.correct) {
@@ -559,6 +589,17 @@
 					<h3 class="font-bold text-lg md:text-xl text-blue-600 tracking-widest">YOU</h3>
 					<HealthBar current={playerHP} max={playerMaxHP} label="HP" color="bg-green-500" bind:barRef={playerHpBarRef} />
 				</div>
+				
+				<!-- Live Accuracy Gauge -->
+				{#if questionsAnswered > 0}
+					<AccuracyGauge 
+						currentAccuracy={currentAccuracy}
+						threshold={accuracyThreshold()}
+						difficulty={difficulty}
+						correctAnswers={correctAnswers}
+						incorrectAnswers={incorrectAnswers}
+					/>
+				{/if}
 			</div>
 		</div>
 

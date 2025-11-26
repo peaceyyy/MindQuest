@@ -203,16 +203,19 @@ public class GameServer {
              summary = gameService.completeRoundAndSummarize();
         }
 
-        ctx.json(Map.of(
-            "correct", result.isCorrect(),
-            "pointsAwarded", result.getPointsAwarded(),
-            "damageTaken", result.getDamageTaken(),
-            "currentHp", result.getPlayerHpAfter(),
-            "correctIndex", q.getCorrectIndex(),
-            "roundComplete", roundComplete,
-            "isCritical", result.isCritical(),
-            "isCounterattack", result.isCounterattack(),
-            "summary", summary != null ? summary : "null"
+        ctx.json(Map.ofEntries(
+            Map.entry("correct", result.isCorrect()),
+            Map.entry("pointsAwarded", result.getPointsAwarded()),
+            Map.entry("damageTaken", result.getDamageTaken()),
+            Map.entry("currentHp", result.getPlayerHpAfter()),
+            Map.entry("correctIndex", q.getCorrectIndex()),
+            Map.entry("roundComplete", roundComplete),
+            Map.entry("isCritical", result.isCritical()),
+            Map.entry("isCounterattack", result.isCounterattack()),
+            Map.entry("correctAnswers", result.getCorrectAnswers()),
+            Map.entry("incorrectAnswers", result.getIncorrectAnswers()),
+            Map.entry("currentAccuracy", result.getCurrentAccuracy()),
+            Map.entry("summary", summary != null ? summary : "null")
         ));
     }
 

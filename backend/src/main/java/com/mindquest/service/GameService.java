@@ -174,7 +174,24 @@ public class GameService {
             player.takeDamage(damageTaken);
         }
 
-        return new AnswerResult(correct, pointsAwarded, damageTaken, player.getHp(), isCritical, isCounterattack);
+        // Calculate current accuracy for live gauge
+        int totalAnswered = correctAnswersCount + incorrectAnswersCount;
+        double currentAccuracy = 0.0;
+        if (totalAnswered > 0) {
+            currentAccuracy = Math.min(100.0, (correctAnswersCount * 100.0) / totalAnswered);
+        }
+
+        return new AnswerResult(
+            correct, 
+            pointsAwarded, 
+            damageTaken, 
+            player.getHp(), 
+            isCritical, 
+            isCounterattack,
+            correctAnswersCount,
+            incorrectAnswersCount,
+            currentAccuracy
+        );
     }
     
     /**
