@@ -20,6 +20,7 @@
 	let loading = $state(false);
 	let error = $state('');
 	let roundComplete = $state(false);
+	let isVictory = $state(false);
 	
 	// Battle State - now synced with backend
 	let playerHP = $state(100);
@@ -34,6 +35,7 @@
 	// Stats
 	let totalPoints = $state(0);
 	let questionsAnswered = $state(0);
+	let roundSummary = $state<any>(null);
 	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
@@ -64,12 +66,13 @@
 	// Enemys Sprite paths based on difficulty
 	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
 	
-	// Enemy damage per correct answer (scales with difficulty)
+	// Enemy damage per correct answer (INVERTED MODEL - scales with difficulty)
+	// Hard enemies have MORE HP, requiring more hits to defeat
 	let enemyDamagePerHit = $derived(() => {
 		switch (difficulty.toLowerCase()) {
-			case 'easy': return 25;   // 4 correct answers to win
-			case 'medium': return 20; // 5 correct answers to win
-			case 'hard': return 15;   // ~7 correct answers to win
+			case 'easy': return 25;   // 4 correct answers to win (strict - you should know this!)
+			case 'medium': return 20; // 5 correct answers to win (balanced)
+			case 'hard': return 16.67; // 6 correct answers to win (forgiving - questions are hard)
 			default: return 20;
 		}
 	});
@@ -77,11 +80,17 @@
 	// Play victory/defeat sound when round completes
 	$effect(() => {
 		if (roundComplete) {
-			if (playerHP > 0) {
+			if (isVictory) {
 				// Victory - play celebration sound
 				sounds.play('victory');
+			} else {
+				// Defeat - play defeat sound (only if not already played)
+				if (playerHP > 0) {
+					// Player has HP but still lost (enemy survived)
+					sounds.play('defeat');
+				}
+				// If playerHP === 0, defeat sound already played in handleAnswer
 			}
-			// Defeat sound already plays when playerHP reaches 0 in handleAnswer
 		}
 	});
 	
@@ -91,6 +100,19 @@
 			case 'medium': return 2;
 			case 'hard': return 3;
 			default: return 1;
+		}
+	}
+	
+	function getCritMessage(diff: string): string {
+		switch (diff.toLowerCase()) {
+			case 'easy':
+				return "⚡ CRITICAL HIT! Quick reflexes! +5% damage & XP!";
+			case 'medium':
+				return "⚡ CRITICAL HIT! Excellent timing! +15% damage & XP!";
+			case 'hard':
+				return "⚡ CRITICAL HIT! Masterful precision! +25% damage & XP!";
+			default:
+				return "⚡ CRITICAL HIT! +15% damage & XP!";
 		}
 	}
 	
@@ -279,9 +301,13 @@
 				// Player attacks enemy - frontend-managed enemy HP
 				let damageToEnemy = enemyDamagePerHit();
 				
-				// Apply critical hit bonus (15% more damage)
+				// Apply difficulty-specific critical hit bonus
+				// Easy: 5%, Medium: 15%, Hard: 25%
 				if (result.isCritical) {
-					damageToEnemy = Math.round(damageToEnemy * 1.15);
+					const critMultiplier = difficulty.toLowerCase() === 'easy' ? 1.05 
+						: difficulty.toLowerCase() === 'hard' ? 1.25 
+						: 1.15;
+					damageToEnemy = Math.round(damageToEnemy * critMultiplier);
 				}
 				
 				enemyHP = Math.max(0, enemyHP - damageToEnemy);
@@ -321,8 +347,18 @@
 			
 			// Check if round is complete
 			if (result.roundComplete || playerHP === 0 || enemyHP === 0) {
-				if (result.roundComplete || enemyHP === 0) {
-					roundComplete = true;
+				roundComplete = true;
+				
+				// Determine if it's a victory or defeat
+				// Victory: Enemy defeated (HP = 0) AND player still alive (HP > 0)
+				// Defeat: Player HP = 0 OR (round complete but enemy still alive)
+				if (enemyHP === 0 && playerHP > 0) {
+					// VICTORY!
+					isVictory = true;
+					// Capture round summary if provided
+					if (result.summary && result.summary !== 'null') {
+						roundSummary = result.summary;
+					}
 					try {
 						const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
 						const updated = prev + (totalPoints || 0);
@@ -330,10 +366,15 @@
 					} catch (e) {
 						console.warn('Failed to persist career points:', e);
 					}
-				} else if (playerHP === 0) {
-					// Player defeated - mark round as failed
-					roundComplete = true;
-					// Don't save points on defeat
+				} else {
+					// DEFEAT - Player died OR round ended with enemy still alive
+					isVictory = false;
+					// Capture summary for stats display even on defeat
+					if (result.summary && result.summary !== 'null') {
+						roundSummary = result.summary;
+					}
+					// DO NOT save points on defeat - stats shown for learning purposes only
+					console.log('Defeated - no points awarded. Enemy HP:', enemyHP, 'Player HP:', playerHP);
 				}
 			}
 			
@@ -424,21 +465,60 @@
 		</div>
 	{:else if roundComplete}
 		<div class="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-			{#if playerHP > 0}
+			{#if isVictory}
 				<h2 class="text-4xl font-bold text-green-600">Victory!</h2>
 				<p class="text-gray-600">You defeated the {topic.toUpperCase()} Boss!</p>
 			{:else}
 				<h2 class="text-4xl font-bold text-red-600">Defeated...</h2>
 				<p class="text-gray-600">The {topic.toUpperCase()} Boss was too strong this time.</p>
 			{/if}
-			<div class="text-2xl space-y-2">
-				<p>Total Points: <span class="font-bold text-blue-600">{totalPoints}</span></p>
-				<p>Questions Answered: <span class="font-bold text-gray-600">{questionsAnswered}</span></p>
-			</div>
+			
+			{#if roundSummary}
+				<!-- Enhanced Statistics Display -->
+				<div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg max-w-md w-full space-y-4">
+					<h3 class="text-2xl font-bold text-gray-800 mb-4">Round Statistics</h3>
+					
+					<div class="grid grid-cols-2 gap-4 text-left">
+						<div class="space-y-1">
+							<p class="text-sm text-gray-500 uppercase tracking-wide">Total Questions</p>
+							<p class="text-3xl font-bold text-blue-600">{roundSummary.totalQuestions}</p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm text-gray-500 uppercase tracking-wide">Accuracy</p>
+							<p class="text-3xl font-bold text-green-600">{roundSummary.accuracyPercentage.toFixed(1)}%</p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm text-gray-500 uppercase tracking-wide">Correct</p>
+							<p class="text-3xl font-bold text-emerald-600">{roundSummary.correctAnswers}</p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm text-gray-500 uppercase tracking-wide">Misses</p>
+							<p class="text-3xl font-bold text-red-600">{roundSummary.incorrectAnswers}</p>
+						</div>
+					</div>
+					
+					{#if roundSummary.averageAnswerTimeMs > 0}
+						<div class="border-t pt-4 mt-4">
+							<p class="text-sm text-gray-500 uppercase tracking-wide mb-1">Average Time</p>
+							<p class="text-2xl font-bold text-purple-600">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</p>
+						</div>
+					{/if}
+					
+					<div class="border-t pt-4 mt-4">
+						<p class="text-sm text-gray-500 uppercase tracking-wide mb-1">Total Points Earned</p>
+						<p class="text-3xl font-bold text-yellow-600">{totalPoints}</p>
+					</div>
+				</div>
+			{:else}
+				<!-- Fallback to basic stats if summary not available -->
+				<div class="text-2xl space-y-2">
+					<p>Total Points: <span class="font-bold text-blue-600">{totalPoints}</span></p>
+					<p>Questions Answered: <span class="font-bold text-gray-600">{questionsAnswered}</span></p>
+				</div>
+			{/if}
+			
 			<div class="flex gap-4">
-				{#if playerHP > 0}
-					<button class="px-8 py-4 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={goToResults}>Victory Screen</button>
-				{/if}
+				<button class="px-8 py-4 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={() => goto('/')}>Play Again</button>
 				<button class="px-8 py-4 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={backToHome}>Return to Base</button>
 			</div>
 		</div>
@@ -484,7 +564,17 @@
 
 		<!-- UI Zone -->
 		<div class="mt-4 space-y-4 pb-8">
-			<DialogueBox text={feedback ? (feedback.correct ? "Critical Hit! You dealt damage!" : `Missed! The answer was ${['A', 'B', 'C', 'D'][feedback.correctIndex]}.`) : currentQuestion.questionText} />
+			<DialogueBox text={
+				feedback 
+					? (feedback.correct 
+						? (feedback.isCritical 
+							? getCritMessage(difficulty) 
+							: "Hit! You dealt damage!") 
+						: feedback.isCounterattack
+							? `💥 BOSS COUNTERATTACK! Three mistakes in a row! The enemy strikes back with devastating force! (1.5× damage)`
+							: `Missed! The answer was ${['A', 'B', 'C', 'D'][feedback.correctIndex]}.`) 
+					: currentQuestion.questionText
+			} />
 			
 			{#if !feedback}
 				<ActionMenu 

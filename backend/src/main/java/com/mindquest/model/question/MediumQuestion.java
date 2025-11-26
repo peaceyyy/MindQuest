@@ -14,6 +14,8 @@ public class MediumQuestion extends Question {
 
     @Override
     public int calculateDamage() {
-        return 15; // Incorrect medium questions deduct 15 HP
+        // GOLDEN MEAN: Medium is balanced
+        // Fair damage for moderate difficulty content
+        return 25; // 40% mistake tolerance (2 mistakes allowed in 5 questions)
     }
 }

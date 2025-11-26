@@ -20,6 +20,17 @@ public class GameService {
 
     private Integer snapshotHp = null;
     private Integer snapshotScore = null;
+    
+    // Round statistics tracking
+    private int correctAnswersCount = 0;
+    private int incorrectAnswersCount = 0;
+    private long totalAnswerTimeMs = 0;
+    private int answersWithTime = 0;
+    
+    // Streak tracking
+    private int correctStreak = 0;
+    private int wrongStreak = 0;
+    
     private static final AtomicInteger poolThreadCounter = new AtomicInteger(1);
     private final ExecutorService backgroundPool = Executors.newFixedThreadPool(
         Math.max(2, Runtime.getRuntime().availableProcessors()/2),
@@ -40,6 +51,16 @@ public class GameService {
     public void startNewRound(String topic, String difficulty) {
         sessionManager.startNewRound(topic, difficulty);
  
+        // Reset round statistics
+        correctAnswersCount = 0;
+        incorrectAnswersCount = 0;
+        totalAnswerTimeMs = 0;
+        answersWithTime = 0;
+        
+        // Reset streaks
+        correctStreak = 0;
+        wrongStreak = 0;
+        
         // (hints are per-round and reset automatically, so not snapshotted)
         snapshotHp = player.getHp();
         snapshotScore = player.getScore();
@@ -102,28 +123,79 @@ public class GameService {
         int pointsAwarded = 0;
         int damageTaken = 0;
         boolean isCritical = false;
+        boolean isCounterattack = false;
 
         // Check for critical hit (answer in less than 5 seconds)
         if (correct && answerTimeMs != null && answerTimeMs < 5000) {
             isCritical = true;
         }
 
+        // Track statistics
+        if (correct) {
+            correctAnswersCount++;
+            correctStreak++;
+            wrongStreak = 0; // Reset wrong streak on correct answer
+        } else {
+            incorrectAnswersCount++;
+            wrongStreak++;
+            correctStreak = 0; // Reset correct streak on wrong answer
+        }
+        
+        if (answerTimeMs != null && answerTimeMs > 0) {
+            totalAnswerTimeMs += answerTimeMs;
+            answersWithTime++;
+        }
+
         if (correct) {
             pointsAwarded = question.calculateScore();
-            // Bonus points for critical hit
+            
+            // INVERTED CRIT BONUSES: Easy 5%, Medium 15%, Hard 25%
             if (isCritical) {
-                pointsAwarded = (int) Math.round(pointsAwarded * 1.15);
+                double critMultiplier = getCritMultiplier(question.getDifficulty());
+                pointsAwarded = (int) Math.round(pointsAwarded * critMultiplier);
             }
+            
             player.addScore(pointsAwarded);
             if (isFinalChance) {
                 player.restoreHp(30);
             }
         } else {
             damageTaken = question.calculateDamage();
+            
+            // Check for 3-wrong streak: Apply critical damage from enemy
+            if (wrongStreak >= 3) {
+                // Boss counterattack! 1.5x damage on 3rd consecutive mistake
+                damageTaken = (int) Math.round(damageTaken * 1.5);
+                isCounterattack = true;
+                // Reset streak after delivering critical damage
+                wrongStreak = 0;
+            }
+            
             player.takeDamage(damageTaken);
         }
 
-        return new AnswerResult(correct, pointsAwarded, damageTaken, player.getHp(), isCritical);
+        return new AnswerResult(correct, pointsAwarded, damageTaken, player.getHp(), isCritical, isCounterattack);
+    }
+    
+    /**
+     * Get critical hit multiplier based on difficulty.
+     * Easy: 1.05 (5% bonus - minimal reward for speed on simple questions)
+     * Medium: 1.15 (15% bonus - current baseline)
+     * Hard: 1.25 (25% bonus - reward careful, fast reading on difficult content)
+     */
+    private double getCritMultiplier(String difficulty) {
+        if (difficulty == null) return 1.15; // Default to medium
+        
+        switch (difficulty.toLowerCase()) {
+            case "easy":
+                return 1.05;
+            case "medium":
+                return 1.15;
+            case "hard":
+                return 1.25;
+            default:
+                return 1.15;
+        }
     }
 
     /**
@@ -134,9 +206,37 @@ public class GameService {
         int roundScore = player.getScore() + hpBonus;
         player.addScore(hpBonus);
         sessionManager.addToGlobalPoints(roundScore);
+        
+        // Calculate statistics
+        int totalQuestions = sessionManager.getCurrentRoundQuestionCount();
+        int correctAnswers = correctAnswersCount;
+        int incorrectAnswers = incorrectAnswersCount;
+        
+        // Calculate accuracy percentage (capped at 100)
+        double accuracyPercentage = 0.0;
+        if (totalQuestions > 0) {
+            accuracyPercentage = Math.min(100.0, (correctAnswers * 100.0) / totalQuestions);
+        }
+        
+        // Calculate average answer time
+        long averageAnswerTimeMs = 0;
+        if (answersWithTime > 0) {
+            averageAnswerTimeMs = totalAnswerTimeMs / answersWithTime;
+        }
+        
         snapshotHp = null;
         snapshotScore = null;
-        return new RoundSummary(hpBonus, roundScore, sessionManager.getGlobalPoints());
+        
+        return new RoundSummary(
+            hpBonus, 
+            roundScore, 
+            sessionManager.getGlobalPoints(),
+            totalQuestions,
+            correctAnswers,
+            incorrectAnswers,
+            accuracyPercentage,
+            averageAnswerTimeMs
+        );
     }
 
     /**
@@ -165,4 +265,8 @@ public class GameService {
     }
 
     public String getCurrentTopic() { return sessionManager.getCurrentTopic(); }
+    
+    public int getCorrectStreak() { return correctStreak; }
+    
+    public int getWrongStreak() { return wrongStreak; }
 }

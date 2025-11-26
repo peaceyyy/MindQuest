@@ -14,6 +14,8 @@ public class HardQuestion extends Question {
 
     @Override
     public int calculateDamage() {
-        return 10; // Incorrect hard questions deduct 10 HP
+        // FORGIVING MODEL: Hard questions are genuinely difficult
+        // Mistakes are understandable - lower punishment
+        return 20; // 50% mistake tolerance (2-3 mistakes allowed in 5 questions)
     }
 }

@@ -211,6 +211,7 @@ public class GameServer {
             "correctIndex", q.getCorrectIndex(),
             "roundComplete", roundComplete,
             "isCritical", result.isCritical(),
+            "isCounterattack", result.isCounterattack(),
             "summary", summary != null ? summary : "null"
         ));
     }
