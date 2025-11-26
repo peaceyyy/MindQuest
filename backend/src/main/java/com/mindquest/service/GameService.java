@@ -124,6 +124,7 @@ public class GameService {
         int damageTaken = 0;
         boolean isCritical = false;
         boolean isCounterattack = false;
+        boolean isHotStreak = false;
 
         // Check for critical hit (answer in less than 5 seconds)
         if (correct && answerTimeMs != null && answerTimeMs < 5000) {
@@ -149,10 +150,29 @@ public class GameService {
         if (correct) {
             pointsAwarded = question.calculateScore();
             
+            // Apply difficulty XP multiplier (Easy: 1.0×, Medium: 1.5×, Hard: 2.5×)
+            double xpMultiplier = getDifficultyXpMultiplier(question.getDifficulty());
+            pointsAwarded = (int) Math.round(pointsAwarded * xpMultiplier);
+            
             // INVERTED CRIT BONUSES: Easy 5%, Medium 15%, Hard 25%
             if (isCritical) {
                 double critMultiplier = getCritMultiplier(question.getDifficulty());
                 pointsAwarded = (int) Math.round(pointsAwarded * critMultiplier);
+            }
+            
+            // HOT STREAK BONUS: 3 correct answers in a row = +10% XP
+            if (correctStreak >= 3) {
+                isHotStreak = true;
+                pointsAwarded = (int) Math.round(pointsAwarded * 1.10);
+            }
+            
+            player.addScore(pointsAwarded);
+            if (correctStreak >= 5) {
+                // "Perfect Form!" - Full HP restore at 5 correct streak
+                player.restoreHp(player.getMaxHp());
+            } else if (correctStreak >= 3) {
+                // "Hot Streak!" - +10% XP bonus at 3 correct streak
+                pointsAwarded = (int) Math.round(pointsAwarded * 1.10);
             }
             
             player.addScore(pointsAwarded);
@@ -190,7 +210,10 @@ public class GameService {
             isCounterattack,
             correctAnswersCount,
             incorrectAnswersCount,
-            currentAccuracy
+            currentAccuracy,
+            correctStreak,
+            wrongStreak,
+            isHotStreak
         );
     }
     
@@ -212,6 +235,27 @@ public class GameService {
                 return 1.25;
             default:
                 return 1.15;
+        }
+    }
+    
+    /**
+     * Get XP multiplier based on difficulty.
+     * Easy: 1.0× (baseline - fundamentals)
+     * Medium: 1.5× (moderate reward)
+     * Hard: 2.5× (high reward for mastering difficult content)
+     */
+    private double getDifficultyXpMultiplier(String difficulty) {
+        if (difficulty == null) return 1.0; // Default to easy
+        
+        switch (difficulty.toLowerCase()) {
+            case "easy":
+                return 1.0;
+            case "medium":
+                return 1.5;
+            case "hard":
+                return 2.5;
+            default:
+                return 1.0;
         }
     }
 

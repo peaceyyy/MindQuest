@@ -11,6 +11,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
 	import AccuracyGauge from '$lib/components/battle/AccuracyGauge.svelte';
+	import ReviewModal from '$lib/components/ReviewModal.svelte';
 	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
 	import { sounds } from '$lib/audio/SoundManager';
 	
@@ -22,6 +23,15 @@
 	let error = $state('');
 	let roundComplete = $state(false);
 	let isVictory = $state(false);
+	let defeatReason = $state<string>(''); // 'hp_depleted', 'accuracy_low', 'counterattack'
+	let answerHistory = $state<Array<{
+		correct: boolean;
+		questionText: string;
+		choices: string[];
+		correctIndex: number;
+		userAnswerIndex: number;
+	}>>([]);
+	let showReviewModal = $state(false);
 	
 	// Battle State - now synced with backend
 	let playerHP = $state(100);
@@ -43,12 +53,20 @@
 	let incorrectAnswers = $state(0);
 	let currentAccuracy = $state(0); // Percentage (0-100)
 	
+	// Streak tracking for bonuses
+	let correctStreak = $state(0);
+	let wrongStreak = $state(0);
+	let isHotStreak = $state(false);
+	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
 	
 	// Dialog state
 	let showFleeConfirm = $state(false);
 	let fleeLoading = $state(false);
+
+	// Minimized win-conditions popover (top-left badge)
+	let showWinMinPopover = $state(false);
 	
 	// Animation refs
 	let battleContainerRef: HTMLDivElement | null = $state(null);
@@ -132,6 +150,21 @@
 				return "⚡ CRITICAL HIT! Masterful precision! +25% damage & XP!";
 			default:
 				return "⚡ CRITICAL HIT! +15% damage & XP!";
+		}
+	}
+	
+	function getDefeatReasonMessage(reason: string): string {
+		switch (reason) {
+			case 'hp_depleted':
+				return "💔 HP Depleted - Too many mistakes!";
+			case 'counterattack':
+				return "💥 Boss Counterattack - Three wrong in a row!";
+			case 'accuracy_low':
+				return `📉 Accuracy Too Low - Needed ${accuracyThreshold()}% to pass`;
+			case 'enemy_survived':
+				return "⏱️ Round Complete - Enemy survived!";
+			default:
+				return "Defeat";
 		}
 	}
 	
@@ -315,6 +348,15 @@
 			feedback = result;
 			questionsAnswered++;
 			
+			// Track answer history for defeat screen breakdown
+			answerHistory.push({
+				correct: result.correct,
+				questionText: currentQuestion?.text || 'Question',
+				choices: currentQuestion?.choices || [],
+				correctIndex: result.correctIndex,
+				userAnswerIndex: index
+			});
+			
 			// Update live accuracy tracking from backend
 			if (result.correctAnswers !== undefined) {
 				correctAnswers = result.correctAnswers;
@@ -324,6 +366,17 @@
 			}
 			if (result.currentAccuracy !== undefined) {
 				currentAccuracy = result.currentAccuracy;
+			}
+			
+			// Update streak tracking from backend
+			if (result.correctStreak !== undefined) {
+				correctStreak = result.correctStreak;
+			}
+			if (result.wrongStreak !== undefined) {
+				wrongStreak = result.wrongStreak;
+			}
+			if (result.isHotStreak !== undefined) {
+				isHotStreak = result.isHotStreak;
 			}
 			
 			// Use backend HP for player damage (authoritative)
@@ -369,6 +422,13 @@
 					await new Promise(r => setTimeout(r, 300));
 					defeatAnimation(playerSpriteRef);
 					sounds.play('defeat');
+					
+					// Determine defeat reason
+					if (result.isCounterattack) {
+						defeatReason = 'counterattack';
+					} else {
+						defeatReason = 'hp_depleted';
+					}
 				}
 			}
 			
@@ -399,12 +459,24 @@
 				} else {
 					// DEFEAT - Player died OR round ended with enemy still alive
 					isVictory = false;
+					
+					// Determine defeat reason if not already set
+					if (!defeatReason) {
+						if (playerHP === 0) {
+							defeatReason = 'hp_depleted';
+						} else if (enemyHP > 0 && currentAccuracy < accuracyThreshold()) {
+							defeatReason = 'accuracy_low';
+						} else {
+							defeatReason = 'enemy_survived';
+						}
+					}
+					
 					// Capture summary for stats display even on defeat
 					if (result.summary && result.summary !== 'null') {
 						roundSummary = result.summary;
 					}
 					// DO NOT save points on defeat - stats shown for learning purposes only
-					console.log('Defeated - no points awarded. Enemy HP:', enemyHP, 'Player HP:', playerHP);
+					console.log('Defeated - no points awarded. Enemy HP:', enemyHP, 'Player HP:', playerHP, 'Reason:', defeatReason);
 				}
 			}
 			
@@ -481,6 +553,36 @@
 		}
 		goto('/');
 	}
+
+	async function restartRound() {
+		// Reset all game state variables to their initial values
+		sessionId = '';
+		currentQuestion = null;
+		feedback = null;
+		loading = true; // Set loading to true immediately
+		error = '';
+		roundComplete = false;
+		isVictory = false;
+		defeatReason = '';
+		answerHistory = [];
+		showReviewModal = false;
+		playerHP = 100;
+		enemyHP = 100;
+		totalPoints = 0;
+		questionsAnswered = 0;
+		roundSummary = null;
+		correctAnswers = 0;
+		incorrectAnswers = 0;
+		currentAccuracy = 0;
+		correctStreak = 0;
+		wrongStreak = 0;
+		isHotStreak = false;
+		questionStartTime = null;
+		damagePopups = [];
+		
+		// Re-initialize the game
+		await initializeGame();
+	}
 </script>
 
 <div class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col font-sans">
@@ -501,6 +603,16 @@
 			{:else}
 				<h2 class="text-4xl font-bold text-red-600">Defeated...</h2>
 				<p class="text-gray-600">The {topic.toUpperCase()} Boss was too strong this time.</p>
+				
+				<!-- Defeat Reason Badge -->
+				{#if defeatReason}
+					<div class="bg-red-100 border-2 border-red-400 rounded-lg px-4 py-3 text-red-800 font-semibold">
+						{getDefeatReasonMessage(defeatReason)}
+					</div>
+				{/if}
+				
+				<!-- Answer Breakdown Visual -->
+				
 			{/if}
 			
 			{#if roundSummary}
@@ -547,8 +659,18 @@
 				</div>
 			{/if}
 			
-			<div class="flex gap-4">
-				<button class="px-8 py-4 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={() => goto('/')}>Play Again</button>
+			<div class="flex gap-4 flex-wrap justify-center">
+				<!-- Review Answers Button (only on defeat) -->
+				{#if !isVictory && answerHistory.length > 0}
+					<button 
+						class="px-8 py-4 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600 shadow-lg transform hover:-translate-y-1 transition-all flex items-center gap-2"
+						onclick={() => showReviewModal = true}
+					>
+						<span class="text-xl">📚</span>
+						Review Answers
+					</button>
+				{/if}
+				<button class="px-8 py-4 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={restartRound}>Play Again</button>
 				<button class="px-8 py-4 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={backToHome}>Return to Base</button>
 			</div>
 		</div>
@@ -567,14 +689,39 @@
 				/>
 			{/each}
 			
-			<!-- Header / Stats -->
-			<div class="absolute top-0 left-0 right-0 flex justify-between p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
-				<span>TOPIC: {topic.toUpperCase()}</span>
-				<button class="text-red-500 hover:underline" onclick={showFleeDialog}>FLEE</button>
-			</div>
+		<!-- Header / Stats -->
+		<div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
+			<span>TOPIC: {topic.toUpperCase()}</span>
+			<button class="text-red-500 hover:underline" onclick={showFleeDialog}>FLEE</button>
+		</div>
 
-			<!-- Enemy Zone (Top Right) -->
-			<div class="flex justify-end items-center gap-4 p-4 mt-8">
+		<!-- Minimized Win Conditions Badge (top-left) -->
+		<div class="absolute top-4 left-4 z-30">
+			<button
+				class="w-10 h-10 rounded-full bg-red-500/95 text-white flex items-center justify-center shadow-md ring-2 ring-white/10 hover:scale-105 transition-transform"
+				onmouseenter={() => showWinMinPopover = true}
+				onmouseleave={() => showWinMinPopover = false}
+				onclick={() => showWinMinPopover = !showWinMinPopover}
+				aria-label="Win conditions"
+			>
+				🏆
+			</button>
+
+			{#if showWinMinPopover}
+				<div class="mt-2 w-44 bg-yellow-50/80 border border-yellow-300 rounded-md p-2 text-xs text-slate-700 shadow-lg">
+					<div class="flex items-center gap-2 font-bold text-yellow-600 text-sm">
+						<span>🏆</span>
+						<span>Win</span>
+					</div>
+					<div class="mt-1 text-xs text-slate-600">{accuracyThreshold()}% accuracy</div>
+					<div class="text-gray-400 uppercase text-[11px]">or</div>
+					<div class="text-slate-600 text-xs">Defeat enemy</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Enemy Zone (Top Right) -->
+		<div class="flex justify-end items-center gap-4 p-4 mt-8">
 				<div class="text-right">
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
 					<HealthBar current={enemyHP} max={enemyMaxHP} label="ENEMY" color="bg-red-500" bind:barRef={enemyHpBarRef} />
@@ -592,6 +739,72 @@
 				
 				<!-- Live Accuracy Gauge -->
 				{#if questionsAnswered > 0}
+					<!-- Streak indicators remain near the player but meter moved to UI panel -->
+					<div class="flex flex-col gap-2">
+						{#if correctStreak >= 3}
+							<div class="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-2 border-yellow-500 rounded-lg px-3 py-2 text-center animate-pulse">
+								<div class="text-yellow-400 font-bold text-sm">🔥 HOT STREAK!</div>
+								<div class="text-slate-100 text-xs">⛓️ {correctStreak} correct</div>
+								<div class="text-yellow-300 text-xs">+10% XP bonus!</div>
+							</div>
+						{:else if correctStreak >= 1}
+							<div class="bg-green-900/30 border border-green-600 rounded-lg px-3 py-2 text-center">
+								<div class="text-green-400 font-semibold text-sm">⛓️ {correctStreak}</div>
+							</div>
+						{/if}
+
+						{#if wrongStreak >= 2}
+							<div class="bg-gradient-to-r from-red-500/20 to-orange-500/20 border-2 border-red-500 rounded-lg px-3 py-2 text-center animate-pulse">
+								<div class="text-red-400 font-bold text-sm">⚠️ DANGER ZONE!</div>
+								<div class="text-slate-100 text-xs">{wrongStreak} wrong</div>
+								<div class="text-red-300 text-xs">Next: 1.5× damage!</div>
+							</div>
+						{:else if wrongStreak >= 1}
+							<div class="bg-red-900/30 border border-red-600 rounded-lg px-3 py-2 text-center">
+								<div class="text-red-400 font-semibold text-sm">⚠️ {wrongStreak}</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		</div>
+
+	<!-- UI Zone -->
+	<div class="mt-4 pb-8">
+		<div class="grid grid-cols-[1fr_14rem] items-start gap-6">
+			<!-- Main Content: Dialogue + Actions (Left, fixed grid column so width stays stable) -->
+			<div class="w-full space-y-4 min-h-[320px]">
+				<DialogueBox text={
+					feedback 
+						? (feedback.correct 
+							? (feedback.isCritical 
+								? getCritMessage(difficulty) 
+								: "Hit! You dealt damage!") 
+							: feedback.isCounterattack
+								? `💥 BOSS COUNTERATTACK! Three mistakes in a row! The enemy strikes back with devastating force! (1.5× damage)`
+								: `Missed! The correct answer was:\n\n${['A', 'B', 'C', 'D'][feedback.correctIndex]}. ${currentQuestion.choices[feedback.correctIndex]}`) 
+						: currentQuestion.questionText
+				} />
+
+				{#if !feedback}
+					<ActionMenu 
+						choices={currentQuestion.choices} 
+						onSelect={handleAnswer} 
+						disabled={loading} 
+					/>
+				{:else}
+					<button 
+						class="w-full py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 animate-bounce"
+						onclick={nextQuestion}
+					>
+						CONTINUE BATTLE
+					</button>
+				{/if}
+			</div>
+
+			<!-- Right Sidebar: Accuracy Meter  -->
+			<div class="w-56 flex-shrink-0">
+				<div class="space-y-3">
 					<AccuracyGauge 
 						currentAccuracy={currentAccuracy}
 						threshold={accuracyThreshold()}
@@ -599,39 +812,10 @@
 						correctAnswers={correctAnswers}
 						incorrectAnswers={incorrectAnswers}
 					/>
-				{/if}
+				</div>
 			</div>
 		</div>
-
-		<!-- UI Zone -->
-		<div class="mt-4 space-y-4 pb-8">
-			<DialogueBox text={
-				feedback 
-					? (feedback.correct 
-						? (feedback.isCritical 
-							? getCritMessage(difficulty) 
-							: "Hit! You dealt damage!") 
-						: feedback.isCounterattack
-							? `💥 BOSS COUNTERATTACK! Three mistakes in a row! The enemy strikes back with devastating force! (1.5× damage)`
-							: `Missed! The answer was ${['A', 'B', 'C', 'D'][feedback.correctIndex]}.`) 
-					: currentQuestion.questionText
-			} />
-			
-			{#if !feedback}
-				<ActionMenu 
-					choices={currentQuestion.choices} 
-					onSelect={handleAnswer} 
-					disabled={loading} 
-				/>
-			{:else}
-				<button 
-					class="w-full py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 animate-bounce"
-					onclick={nextQuestion}
-				>
-					CONTINUE BATTLE
-				</button>
-			{/if}
-		</div>
+	</div>
 	{/if}
 </div>
 
@@ -647,5 +831,13 @@
 	onCancel={() => showFleeConfirm = false}
 	isLoading={fleeLoading}
 />
+
+<!-- Review Modal -->
+{#if showReviewModal}
+	<ReviewModal 
+		questions={answerHistory}
+		onClose={() => showReviewModal = false}
+	/>
+{/if}
 
 

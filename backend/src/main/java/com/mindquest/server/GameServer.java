@@ -215,6 +215,9 @@ public class GameServer {
             Map.entry("correctAnswers", result.getCorrectAnswers()),
             Map.entry("incorrectAnswers", result.getIncorrectAnswers()),
             Map.entry("currentAccuracy", result.getCurrentAccuracy()),
+            Map.entry("correctStreak", result.getCorrectStreak()),
+            Map.entry("wrongStreak", result.getWrongStreak()),
+            Map.entry("isHotStreak", result.isHotStreak()),
             Map.entry("summary", summary != null ? summary : "null")
         ));
     }

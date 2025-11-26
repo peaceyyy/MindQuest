@@ -13,10 +13,16 @@ public class AnswerResult {
     private final int correctAnswers;
     private final int incorrectAnswers;
     private final double currentAccuracy; // Percentage (0-100)
+    
+    // Streak tracking for bonuses
+    private final int correctStreak;
+    private final int wrongStreak;
+    private final boolean isHotStreak; // 3+ correct streak bonus
 
     public AnswerResult(boolean correct, int pointsAwarded, int damageTaken, int playerHpAfter, 
                         boolean isCritical, boolean isCounterattack,
-                        int correctAnswers, int incorrectAnswers, double currentAccuracy) {
+                        int correctAnswers, int incorrectAnswers, double currentAccuracy,
+                        int correctStreak, int wrongStreak, boolean isHotStreak) {
         this.correct = correct;
         this.pointsAwarded = pointsAwarded;
         this.damageTaken = damageTaken;
@@ -26,6 +32,9 @@ public class AnswerResult {
         this.correctAnswers = correctAnswers;
         this.incorrectAnswers = incorrectAnswers;
         this.currentAccuracy = currentAccuracy;
+        this.correctStreak = correctStreak;
+        this.wrongStreak = wrongStreak;
+        this.isHotStreak = isHotStreak;
     }
 
     public boolean isCorrect() { return correct; }
@@ -37,4 +46,7 @@ public class AnswerResult {
     public int getCorrectAnswers() { return correctAnswers; }
     public int getIncorrectAnswers() { return incorrectAnswers; }
     public double getCurrentAccuracy() { return currentAccuracy; }
+    public int getCorrectStreak() { return correctStreak; }
+    public int getWrongStreak() { return wrongStreak; }
+    public boolean isHotStreak() { return isHotStreak; }
 }
