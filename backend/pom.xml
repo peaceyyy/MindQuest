@@ -193,6 +193,15 @@
                 </property>
             </activation>
             <build>
+                <resources>
+                    <resource>
+                        <directory>${project.parent.basedir}/frontend/dist</directory>
+                        <targetPath>static</targetPath>
+                        <includes>
+                            <include>**/*</include>
+                        </includes>
+                    </resource>
+                </resources>
                 <plugins>
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>

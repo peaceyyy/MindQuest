@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import gsap from 'gsap';
 
 	interface Props {
@@ -20,10 +19,10 @@
 		onComplete
 	}: Props = $props();
 
-	let popupEl: HTMLDivElement;
+	let popupEl: HTMLDivElement | undefined = $state();
 	let visible = $state(true);
 
-	onMount(() => {
+	$effect(() => {
 		if (!popupEl) return;
 
 		// Animate the damage number floating up and fading

@@ -35,6 +35,9 @@
 	let totalPoints = $state(0);
 	let questionsAnswered = $state(0);
 	
+	// Timing for critical hits
+	let questionStartTime = $state<number | null>(null);
+	
 	// Dialog state
 	let showFleeConfirm = $state(false);
 	let fleeLoading = $state(false);
@@ -57,8 +60,8 @@
 	}>>([]);
 	let popupIdCounter = $state(0);
 	
-	// Sprite paths based on difficulty
-	let playerSprite = $derived(`/sprites/player/player-lv${getDifficultyLevel(difficulty)}.png`);
+	let playerSprite = $derived(`/sprites/player/player-lv1.png`);
+	// Enemys Sprite paths based on difficulty
 	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
 	
 	// Enemy damage per correct answer (scales with difficulty)
@@ -68,6 +71,17 @@
 			case 'medium': return 20; // 5 correct answers to win
 			case 'hard': return 15;   // ~7 correct answers to win
 			default: return 20;
+		}
+	});
+	
+	// Play victory/defeat sound when round completes
+	$effect(() => {
+		if (roundComplete) {
+			if (playerHP > 0) {
+				// Victory - play celebration sound
+				sounds.play('victory');
+			}
+			// Defeat sound already plays when playerHP reaches 0 in handleAnswer
 		}
 	});
 	
@@ -108,7 +122,7 @@
 	}
 	
 	// Play attack animation sequence
-	async function playPlayerAttackAnimation(damage: number) {
+	async function playPlayerAttackAnimation(damage: number, isCritical: boolean = false) {
 		// Player lunges forward
 		attackLunge(playerSpriteRef, 'right', 40);
 		
@@ -121,7 +135,7 @@
 		hpBarDamageFlash(enemyHpBarRef);
 		
 		// Show damage popup on enemy
-		showDamagePopup(enemySpriteRef, damage);
+		showDamagePopup(enemySpriteRef, damage, isCritical);
 		
 		// Play hit sound
 		sounds.play('hit');
@@ -225,6 +239,9 @@
 			const rawText = await res.text();
 			currentQuestion = JSON.parse(rawText);
 			
+			// Start timing for critical hit detection
+			questionStartTime = Date.now();
+			
 		} catch (err: any) {
 			error = err.message || 'Failed to load question';
 		} finally {
@@ -235,6 +252,9 @@
 	async function handleAnswer(index: number) {
 		const selectedAnswer = ['A', 'B', 'C', 'D'][index];
 		
+		// Calculate answer time
+		const answerTimeMs = questionStartTime ? Date.now() - questionStartTime : null;
+		
 		try {
 			loading = true;
 			error = '';
@@ -242,7 +262,10 @@
 			const res = await fetch(`/api/sessions/${sessionId}/answer`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ answer: selectedAnswer })
+				body: JSON.stringify({ 
+					answer: selectedAnswer,
+					answerTimeMs: answerTimeMs
+				})
 			});
 			
 			if (!res.ok) throw new Error('Failed to submit answer');
@@ -254,19 +277,28 @@
 			// Use backend HP for player damage (authoritative)
 			if (result.correct) {
 				// Player attacks enemy - frontend-managed enemy HP
-				const damageToEnemy = enemyDamagePerHit();
+				let damageToEnemy = enemyDamagePerHit();
+				
+				// Apply critical hit bonus (15% more damage)
+				if (result.isCritical) {
+					damageToEnemy = Math.round(damageToEnemy * 1.15);
+				}
+				
 				enemyHP = Math.max(0, enemyHP - damageToEnemy);
 				
-				// Play attack animation
-				await playPlayerAttackAnimation(damageToEnemy);
-				sounds.play('correct');
+				// Play attack animation (includes 'hit' sound)
+				await playPlayerAttackAnimation(damageToEnemy, result.isCritical);
+				
+				// Play appropriate sound
+				if (result.isCritical) {
+					sounds.play('crit');
+				}
 				
 				// Check for enemy defeat
 				if (enemyHP === 0) {
 					await new Promise(r => setTimeout(r, 300));
 					victoryPose(playerSpriteRef);
 					defeatAnimation(enemySpriteRef);
-					sounds.play('victory');
 				}
 			} else {
 				// Player takes damage - use backend's calculated damage

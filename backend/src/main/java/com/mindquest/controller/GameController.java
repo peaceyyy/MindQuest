@@ -443,7 +443,7 @@ public class GameController {
 
             try {
                 int answerIndex = Integer.parseInt(input) - 1; // 0-based
-                AnswerResult result = gameService.evaluateAnswer(question, answerIndex, isFinalChance);
+                AnswerResult result = gameService.evaluateAnswer(question, answerIndex, isFinalChance, null);
                 if (result.isCorrect()) {
                     ConsoleUI.displayCorrectAnswerFeedback();
                     if (isFinalChance) {

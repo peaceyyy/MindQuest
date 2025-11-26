@@ -191,9 +191,9 @@ public class GameServer {
             }
         }
         
-        System.out.println("[DEBUG] Received answer: " + (req.answer != null ? req.answer : req.index) + " -> index: " + answerIndex);
+        System.out.println("[DEBUG] Received answer: " + (req.answer != null ? req.answer : req.index) + " -> index: " + answerIndex + ", time: " + req.answerTimeMs + "ms");
         
-        AnswerResult result = gameService.evaluateAnswer(q, answerIndex, false); // Assuming not final chance for now
+        AnswerResult result = gameService.evaluateAnswer(q, answerIndex, false, req.answerTimeMs);
         gameService.moveToNextQuestion();
         
         // Check if round ended
@@ -210,6 +210,7 @@ public class GameServer {
             "currentHp", result.getPlayerHpAfter(),
             "correctIndex", q.getCorrectIndex(),
             "roundComplete", roundComplete,
+            "isCritical", result.isCritical(),
             "summary", summary != null ? summary : "null"
         ));
     }
@@ -255,6 +256,7 @@ public class GameServer {
     public static class AnswerRequest {
         public int index;  // Legacy numeric index (0-3)
         public String answer; // Letter answer (A/B/C/D)
+        public Long answerTimeMs; // Time taken to answer in milliseconds
     }
 
     /**

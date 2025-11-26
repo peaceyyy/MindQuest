@@ -13,14 +13,14 @@ import { Howl } from 'howler';
 // Sound effect definitions
 // Replace placeholder paths with actual audio files when available
 const soundDefs: Record<string, { src: string[]; volume?: number }> = {
-	hit: { src: ['/audio/hit.mp3', '/audio/hit.ogg'], volume: 0.6 },
-	miss: { src: ['/audio/miss.mp3', '/audio/miss.ogg'], volume: 0.4 },
-	crit: { src: ['/audio/crit.mp3', '/audio/crit.ogg'], volume: 0.8 },
-	victory: { src: ['/audio/victory.mp3', '/audio/victory.ogg'], volume: 0.7 },
-	defeat: { src: ['/audio/defeat.mp3', '/audio/defeat.ogg'], volume: 0.6 },
-	select: { src: ['/audio/select.mp3', '/audio/select.ogg'], volume: 0.3 },
-	correct: { src: ['/audio/correct.mp3', '/audio/correct.ogg'], volume: 0.5 },
-	wrong: { src: ['/audio/wrong.mp3', '/audio/wrong.ogg'], volume: 0.5 },
+	hit: { src: ['sfx/hit.mp3'], volume: 0.6 },
+	miss: { src: ['sfx/damage.mp3'], volume: 0.4 },
+	crit: { src: ['sfx/crit.mp3'], volume: 0.8 },
+	victory: { src: ['sfx/victory.mp3'], volume: 0.7 },
+	defeat: { src: ['sfx/defeat.mp3'], volume: 0.6 },
+	select: { src: ['sfx/select.mp3'], volume: 0.3 },
+	correct: { src: ['sfx/correct.mp3'], volume: 0.5 },
+	wrong: { src: ['sfx/wrong.mp3'], volume: 0.5 },
 };
 
 class SoundManager {

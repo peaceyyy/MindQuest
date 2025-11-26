@@ -97,13 +97,23 @@ public class GameService {
     }
 
     
-    public AnswerResult evaluateAnswer(Question question, int answerIndex, boolean isFinalChance) {
+    public AnswerResult evaluateAnswer(Question question, int answerIndex, boolean isFinalChance, Long answerTimeMs) {
         boolean correct = (answerIndex == question.getCorrectIndex());
         int pointsAwarded = 0;
         int damageTaken = 0;
+        boolean isCritical = false;
+
+        // Check for critical hit (answer in less than 5 seconds)
+        if (correct && answerTimeMs != null && answerTimeMs < 5000) {
+            isCritical = true;
+        }
 
         if (correct) {
             pointsAwarded = question.calculateScore();
+            // Bonus points for critical hit
+            if (isCritical) {
+                pointsAwarded = (int) Math.round(pointsAwarded * 1.15);
+            }
             player.addScore(pointsAwarded);
             if (isFinalChance) {
                 player.restoreHp(30);
@@ -113,7 +123,7 @@ public class GameService {
             player.takeDamage(damageTaken);
         }
 
-        return new AnswerResult(correct, pointsAwarded, damageTaken, player.getHp());
+        return new AnswerResult(correct, pointsAwarded, damageTaken, player.getHp(), isCritical);
     }
 
     /**
