@@ -76,6 +76,7 @@ public class SessionManager {
     public void startNewRound(String topic, String difficulty) {
         // Reset player for round (Note: Player is not thread-safe, assuming single-user session or external sync)
         player.resetForRound();
+        player.setHintsForDifficulty(difficulty);
         
         // Load questions outside the atomic update to avoid blocking
         List<Question> newQuestions = loadQuestionsInternal(topic, difficulty, state.get().sourceConfig);

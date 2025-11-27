@@ -112,6 +112,14 @@ public class GameService {
         return player.useHint();
     }
 
+    public int getHints() {
+        return player.getHints();
+    }
+    
+    public int getMaxHints() {
+        return player.getMaxHints();
+    }
+
   
     public void restoreHint() {
         player.restoreHint();

@@ -11,6 +11,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
 	import AccuracyGauge from '$lib/components/battle/AccuracyGauge.svelte';
+	import HintCard from '$lib/components/battle/HintCard.svelte';
 	import ReviewModal from '$lib/components/ReviewModal.svelte';
 	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
 	import { sounds } from '$lib/audio/SoundManager';
@@ -57,6 +58,11 @@
 	let correctStreak = $state(0);
 	let wrongStreak = $state(0);
 	let isHotStreak = $state(false);
+	
+	// Hint system
+	let hints = $state(0);
+	let maxHints = $state(0);
+	let eliminatedChoices = $state<number[]>([]);
 	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
@@ -288,6 +294,7 @@
 			loading = true;
 			error = '';
 			feedback = null;
+			eliminatedChoices = []; // Reset eliminated choices for new question
 			
 			const res = await fetch(`/api/sessions/${sessionId}/question`);
 			
@@ -313,6 +320,9 @@
 			const rawText = await res.text();
 			currentQuestion = JSON.parse(rawText);
 			
+			// Fetch current hints
+			await fetchHints();
+			
 			// Start timing for critical hit detection
 			questionStartTime = Date.now();
 			
@@ -320,6 +330,45 @@
 			error = err.message || 'Failed to load question';
 		} finally {
 			loading = false;
+		}
+	}
+	
+	async function fetchHints() {
+		try {
+			const res = await fetch(`/api/sessions/${sessionId}/hints`);
+			if (res.ok) {
+				const data = await res.json();
+				hints = data.hints;
+				maxHints = data.maxHints;
+			}
+		} catch (err) {
+			console.error('Failed to fetch hints:', err);
+		}
+	}
+	
+	async function useHint() {
+		if (hints === 0 || feedback) return;
+		
+		try {
+			const res = await fetch(`/api/sessions/${sessionId}/use-hint`, {
+				method: 'POST'
+			});
+			
+			if (!res.ok) {
+				const errorData = await res.json();
+				console.error('Failed to use hint:', errorData.error);
+				return;
+			}
+			
+			const data = await res.json();
+			hints = data.hints;
+			eliminatedChoices = [...eliminatedChoices, data.eliminatedIndex];
+			
+			// Play a subtle sound effect
+			sounds.play('correct'); // Reuse existing sound or add a hint sound later
+			
+		} catch (err) {
+			console.error('Failed to use hint:', err);
 		}
 	}
 	
@@ -577,6 +626,9 @@
 		correctStreak = 0;
 		wrongStreak = 0;
 		isHotStreak = false;
+		hints = 0;
+		maxHints = 0;
+		eliminatedChoices = [];
 		questionStartTime = null;
 		damagePopups = [];
 		
@@ -787,10 +839,11 @@
 				} />
 
 				{#if !feedback}
-					<ActionMenu 
-						choices={currentQuestion.choices} 
-						onSelect={handleAnswer} 
-						disabled={loading} 
+					<ActionMenu
+						choices={currentQuestion.choices}
+						onSelect={handleAnswer}
+						disabled={loading}
+						eliminatedChoices={eliminatedChoices}
 					/>
 				{:else}
 					<button 
@@ -811,6 +864,14 @@
 						difficulty={difficulty}
 						correctAnswers={correctAnswers}
 						incorrectAnswers={incorrectAnswers}
+					/>
+					
+					<!-- Hint Card -->
+					<HintCard 
+						hints={hints}
+						maxHints={maxHints}
+						onUseHint={useHint}
+						disabled={!!feedback}
 					/>
 				</div>
 			</div>

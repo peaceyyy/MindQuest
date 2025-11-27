@@ -63,6 +63,8 @@ public class GameServer {
             app.get("/api/sessions/{id}/question", GameServer::getCurrentQuestion);
             app.post("/api/sessions/{id}/answer", GameServer::submitAnswer);
             app.get("/api/sessions/{id}/state", GameServer::getSessionState);
+            app.get("/api/sessions/{id}/hints", GameServer::getHints);
+            app.post("/api/sessions/{id}/use-hint", GameServer::useHint);
             app.post("/api/sessions/{id}/abandon", GameServer::abandonRound);
             
             System.out.println("===================================");
@@ -245,12 +247,70 @@ public class GameServer {
             return;
         }
         
-        // Rollback the round (no points awarded)
+        // Call backend to rollback the round (no points awarded)
         gameService.rollbackRound();
         
         ctx.json(Map.of(
             "message", "Round abandoned successfully",
             "globalPoints", gameService.getGlobalPoints()
+        ));
+    }
+    
+    private static void getHints(Context ctx) {
+        String sessionId = ctx.pathParam("id");
+        GameService gameService = sessions.get(sessionId);
+        if (gameService == null) {
+            ctx.status(404).result("Session not found");
+            return;
+        }
+        
+        ctx.json(Map.of(
+            "hints", gameService.getHints(),
+            "maxHints", gameService.getMaxHints()
+        ));
+    }
+    
+    private static void useHint(Context ctx) {
+        String sessionId = ctx.pathParam("id");
+        GameService gameService = sessions.get(sessionId);
+        if (gameService == null) {
+            ctx.status(404).result("Session not found");
+            return;
+        }
+        
+        Question q = gameService.getCurrentQuestion();
+        if (q == null) {
+            ctx.status(400).result("No active question");
+            return;
+        }
+        
+        boolean success = gameService.useHint();
+        if (!success) {
+            ctx.status(400).json(Map.of(
+                "error", "No hints remaining",
+                "hints", 0
+            ));
+            return;
+        }
+        
+        // Eliminate one wrong answer
+        int correctIndex = q.getCorrectIndex();
+        java.util.List<Integer> wrongIndices = new java.util.ArrayList<>();
+        for (int i = 0; i < q.getChoices().size(); i++) {
+            if (i != correctIndex) {
+                wrongIndices.add(i);
+            }
+        }
+        
+        // Randomly select one wrong answer to eliminate
+        java.util.Random random = new java.util.Random();
+        int eliminatedIndex = wrongIndices.get(random.nextInt(wrongIndices.size()));
+        
+        ctx.json(Map.of(
+            "success", true,
+            "hints", gameService.getHints(),
+            "maxHints", gameService.getMaxHints(),
+            "eliminatedIndex", eliminatedIndex
         ));
     }
 

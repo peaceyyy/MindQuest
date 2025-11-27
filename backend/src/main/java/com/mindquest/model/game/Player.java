@@ -4,13 +4,14 @@ public class Player {
     private int hp;
     private int score;
     private int hints;
+    private int maxHints; // Difficulty-based max hints
     private final int MAX_HP = 100;
-    private final int INITIAL_HINTS = 1;
 
     public Player() {
         this.hp = MAX_HP;
         this.score = 0;
-        this.hints = INITIAL_HINTS;
+        this.hints = 2; // Default to medium difficulty
+        this.maxHints = 2;
     }
 
     public int getHp() {
@@ -47,15 +48,51 @@ public class Player {
     }
 
     public void restoreHint() {
-        if (hints < INITIAL_HINTS) {
+        if (hints < maxHints) {
             hints++;
+        }
+    }
+    
+    /**
+     * Initialize hints based on difficulty.
+     * Easy: 3 hints (questions are simple, but hints help learning)
+     * Medium: 2 hints (balanced)
+     * Hard: 1 hint (limited help for difficult questions)
+     */
+    public void setHintsForDifficulty(String difficulty) {
+        if (difficulty == null) {
+            this.maxHints = 2;
+            this.hints = 2;
+            return;
+        }
+        
+        switch (difficulty.toLowerCase()) {
+            case "easy":
+                this.maxHints = 3;
+                this.hints = 3;
+                break;
+            case "medium":
+                this.maxHints = 2;
+                this.hints = 2;
+                break;
+            case "hard":
+                this.maxHints = 1;
+                this.hints = 1;
+                break;
+            default:
+                this.maxHints = 2;
+                this.hints = 2;
         }
     }
 
     public void resetForRound() {
         this.hp = MAX_HP;
-        this.hints = INITIAL_HINTS;
+        // Hints are set by setHintsForDifficulty() when round starts
         // Score is global and only resets with a new session (killing the terminal)
+    }
+    
+    public int getMaxHints() {
+        return maxHints;
     }
 
   
