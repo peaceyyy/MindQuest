@@ -6,9 +6,17 @@ import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 import com.mindquest.service.GameService;
 import com.mindquest.service.dto.AnswerResult;
+import com.mindquest.loader.TopicScanner;
+import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.service.dto.RoundSummary;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.http.UploadedFile;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,6 +66,12 @@ public class GameServer {
             // Session management
             app.post("/api/sessions", GameServer::createSession);
             
+            // Question Upload
+            app.post("/api/upload/questions", GameServer::uploadQuestions);
+            
+            // Dev: Quick test file loading
+            app.post("/api/test/load-file", GameServer::loadTestFile);
+
             // Game flow
             app.post("/api/sessions/{id}/start", GameServer::startRound);
             app.get("/api/sessions/{id}/question", GameServer::getCurrentQuestion);
@@ -124,6 +138,38 @@ public class GameServer {
         // Normalize topic and difficulty to match QuestionBank format
         String normalizedTopic = normalizeTopic(req.topic);
         String normalizedDifficulty = normalizeDifficulty(req.difficulty);
+        
+        // Check for custom sources
+        // We check against the "loader-friendly" filename format (lowercase, underscores)
+        String checkTopic = normalizedTopic.toLowerCase().replace(" ", "_");
+        SourceConfig config = null;
+        
+        if (TopicScanner.topicExists(checkTopic, SourceConfig.SourceType.CUSTOM_CSV)) {
+            config = new SourceConfig.Builder()
+                .type(SourceConfig.SourceType.CUSTOM_CSV)
+                .topic(normalizedTopic)
+                .difficulty(normalizedDifficulty)
+                .build();
+        } else if (TopicScanner.topicExists(checkTopic, SourceConfig.SourceType.CUSTOM_EXCEL)) {
+            config = new SourceConfig.Builder()
+                .type(SourceConfig.SourceType.CUSTOM_EXCEL)
+                .topic(normalizedTopic)
+                .difficulty(normalizedDifficulty)
+                .build();
+        } else if (TopicScanner.topicExists(checkTopic, SourceConfig.SourceType.CUSTOM_JSON)) {
+            config = new SourceConfig.Builder()
+                .type(SourceConfig.SourceType.CUSTOM_JSON)
+                .topic(normalizedTopic)
+                .difficulty(normalizedDifficulty)
+                .build();
+        }
+        
+        if (config != null) {
+            gameService.setSourceConfig(config);
+            System.out.println("[GameServer] Using custom source: " + config.getType() + " for topic " + normalizedTopic);
+        } else {
+            gameService.setSourceConfig(null);
+        }
 
         gameService.startNewRound(normalizedTopic, normalizedDifficulty);
         ctx.json(Map.of("message", "Round started", "topic", normalizedTopic, "difficulty", normalizedDifficulty));
@@ -264,6 +310,13 @@ public class GameServer {
             return;
         }
         
+        // Diagnostic logging to help debug client showing 0/0 hints
+        try {
+            System.out.println("[DEBUG] getHints called for session: " + sessionId + " -> hints=" + gameService.getHints() + ", maxHints=" + gameService.getMaxHints());
+        } catch (Exception e) {
+            System.err.println("[DEBUG] Failed to log hints for session " + sessionId + ": " + e.getMessage());
+        }
+
         ctx.json(Map.of(
             "hints", gameService.getHints(),
             "maxHints", gameService.getMaxHints()
@@ -293,7 +346,7 @@ public class GameServer {
             return;
         }
         
-        // Eliminate one wrong answer
+        // Eliminate TWO wrong answers (50/50 style)
         int correctIndex = q.getCorrectIndex();
         java.util.List<Integer> wrongIndices = new java.util.ArrayList<>();
         for (int i = 0; i < q.getChoices().size(); i++) {
@@ -302,16 +355,175 @@ public class GameServer {
             }
         }
         
-        // Randomly select one wrong answer to eliminate
-        java.util.Random random = new java.util.Random();
-        int eliminatedIndex = wrongIndices.get(random.nextInt(wrongIndices.size()));
+        // Randomly select TWO wrong answers to eliminate
+        java.util.Collections.shuffle(wrongIndices);
+        java.util.List<Integer> eliminatedIndices = new java.util.ArrayList<>();
+        eliminatedIndices.add(wrongIndices.get(0));
+        if (wrongIndices.size() > 1) {
+            eliminatedIndices.add(wrongIndices.get(1));
+        }
         
         ctx.json(Map.of(
             "success", true,
             "hints", gameService.getHints(),
             "maxHints", gameService.getMaxHints(),
-            "eliminatedIndex", eliminatedIndex
+            "eliminatedIndices", eliminatedIndices  // Return array of 2 eliminated indices
         ));
+    }
+
+    private static void uploadQuestions(Context ctx) {
+        UploadedFile uploadedFile = ctx.uploadedFile("questions");
+        if (uploadedFile == null) {
+            ctx.status(400).json(Map.of("message", "No file uploaded"));
+            return;
+        }
+
+        String originalFilename = uploadedFile.filename();
+        String extension = "";
+        int i = originalFilename.lastIndexOf('.');
+        if (i > 0) {
+            extension = originalFilename.substring(i).toLowerCase();
+        }
+        
+        // Sanitize filename to match loader expectations (lowercase, underscores)
+        String namePart = originalFilename.substring(0, i).toLowerCase().replace(" ", "_");
+        String filename = namePart + extension;
+
+        String targetDir;
+        // Determine directory based on extension
+        // Note: In a real JAR deployment, we should use the external data directory.
+        // For now, we use the src path for dev, but we should ideally use TopicScanner's logic or a shared config.
+        // Since TopicScanner has private constants, we'll replicate the logic or hardcode for dev.
+        // Let's assume dev environment for now as per instructions.
+        
+        switch (extension) {
+            case ".csv":
+                targetDir = "src/questions/external_source/csv/";
+                break;
+            case ".xlsx":
+                targetDir = "src/questions/external_source/xlsx/";
+                break;
+            case ".json":
+                targetDir = "src/questions/external_source/json/";
+                break;
+            default:
+                ctx.status(400).json(Map.of("message", "Unsupported file type: " + extension));
+                return;
+        }
+
+        try {
+            // Ensure directory exists
+            Files.createDirectories(Paths.get(targetDir));
+            
+            // Save file
+            Path targetPath = Paths.get(targetDir + filename);
+            try (java.io.InputStream is = uploadedFile.content()) {
+                Files.copy(is, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            
+            String topicName = filename.substring(0, filename.lastIndexOf('.'));
+            
+            System.out.println("[Upload] Saved " + filename + " to " + targetDir);
+            
+            ctx.json(Map.of(
+                "customTopicName", topicName,
+                "message", "File uploaded successfully"
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("[Upload] Error saving file: " + e.getMessage());
+            ctx.status(500).json(Map.of("message", "Failed to save file: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Dev endpoint: Load a test file from the questions folder (csv/ or xlsx/).
+     * This copies the file to the external_source directory so it can be used by the loaders.
+     */
+    private static void loadTestFile(Context ctx) {
+        String filename = ctx.queryParam("filename");
+        if (filename == null || filename.isEmpty()) {
+            ctx.status(400).json(Map.of("message", "Missing filename parameter"));
+            return;
+        }
+
+        // Determine source and target paths based on extension
+        String extension = "";
+        int dotIdx = filename.lastIndexOf('.');
+        if (dotIdx > 0) {
+            extension = filename.substring(dotIdx).toLowerCase();
+        }
+
+        String sourceDir;
+        String targetDir;
+        
+        switch (extension) {
+            case ".csv":
+                sourceDir = "../questions/csv/";
+                targetDir = "src/questions/external_source/csv/";
+                break;
+            case ".xlsx":
+                sourceDir = "../questions/xlsx/";
+                targetDir = "src/questions/external_source/xlsx/";
+                break;
+            case ".json":
+                sourceDir = "../questions/json/";
+                targetDir = "src/questions/external_source/json/";
+                break;
+            default:
+                ctx.status(400).json(Map.of("message", "Unsupported file type: " + extension));
+                return;
+        }
+
+        Path sourcePath = Paths.get(sourceDir + filename);
+        if (!Files.exists(sourcePath)) {
+            ctx.status(404).json(Map.of("message", "Test file not found: " + filename));
+            return;
+        }
+
+        try {
+            // Ensure target directory exists
+            Files.createDirectories(Paths.get(targetDir));
+            
+            // Copy file to external_source
+            Path targetPath = Paths.get(targetDir + filename);
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            
+            String topicName = filename.substring(0, dotIdx);
+            
+            // Try to count questions loaded (optional - for feedback)
+            int questionsLoaded = 0;
+            try {
+                SourceConfig.SourceType sourceType = extension.equals(".csv") 
+                    ? SourceConfig.SourceType.CUSTOM_CSV 
+                    : extension.equals(".xlsx") 
+                        ? SourceConfig.SourceType.CUSTOM_EXCEL 
+                        : SourceConfig.SourceType.CUSTOM_JSON;
+                
+                SourceConfig config = new SourceConfig.Builder()
+                    .type(sourceType)
+                    .topic(topicName)
+                    .difficulty("") // Load all difficulties to count
+                    .build();
+                
+                java.util.List<Question> questions = com.mindquest.loader.factory.QuestionBankFactory.getQuestions(config);
+                questionsLoaded = questions.size();
+            } catch (Exception e) {
+                System.err.println("[TestLoad] Could not count questions: " + e.getMessage());
+            }
+            
+            System.out.println("[TestLoad] Copied " + filename + " to " + targetDir + " (" + questionsLoaded + " questions)");
+            
+            ctx.json(Map.of(
+                "topicName", topicName,
+                "questionsLoaded", questionsLoaded,
+                "message", "Test file loaded successfully"
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("[TestLoad] Error loading test file: " + e.getMessage());
+            ctx.status(500).json(Map.of("message", "Failed to load test file: " + e.getMessage()));
+        }
     }
 
     // DTOs

@@ -10,8 +10,7 @@
 	import ActionMenu from '$lib/components/battle/ActionMenu.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
-	import AccuracyGauge from '$lib/components/battle/AccuracyGauge.svelte';
-	import HintCard from '$lib/components/battle/HintCard.svelte';
+	import BattleSidebar from '$lib/components/battle/BattleSidebar.svelte';
 	import ReviewModal from '$lib/components/ReviewModal.svelte';
 	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
 	import { sounds } from '$lib/audio/SoundManager';
@@ -63,6 +62,7 @@
 	let hints = $state(0);
 	let maxHints = $state(0);
 	let eliminatedChoices = $state<number[]>([]);
+	let hintUsedThisQuestion = $state(false); // Track if hint was used for current question
 	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
@@ -71,8 +71,7 @@
 	let showFleeConfirm = $state(false);
 	let fleeLoading = $state(false);
 
-	// Minimized win-conditions popover (top-left badge)
-	let showWinMinPopover = $state(false);
+	
 	
 	// Animation refs
 	let battleContainerRef: HTMLDivElement | null = $state(null);
@@ -166,7 +165,7 @@
 			case 'counterattack':
 				return "💥 Boss Counterattack - Three wrong in a row!";
 			case 'accuracy_low':
-				return `📉 Accuracy Too Low - Needed ${accuracyThreshold()}% to pass`;
+				return `Accuracy Too Low - Needed ${accuracyThreshold()}% to pass`;
 			case 'enemy_survived':
 				return "⏱️ Round Complete - Enemy survived!";
 			default:
@@ -295,6 +294,7 @@
 			error = '';
 			feedback = null;
 			eliminatedChoices = []; // Reset eliminated choices for new question
+			hintUsedThisQuestion = false; // Reset hint usage for new question
 			
 			const res = await fetch(`/api/sessions/${sessionId}/question`);
 			
@@ -347,9 +347,13 @@
 	}
 	
 	async function useHint() {
-		if (hints === 0 || feedback) return;
+		if (hints === 0 || feedback || hintUsedThisQuestion) {
+			console.log('[useHint] Blocked - hints:', hints, 'feedback:', feedback, 'hintUsedThisQuestion:', hintUsedThisQuestion);
+			return;
+		}
 		
 		try {
+			console.log('[useHint] Calling /use-hint endpoint...');
 			const res = await fetch(`/api/sessions/${sessionId}/use-hint`, {
 				method: 'POST'
 			});
@@ -361,8 +365,20 @@
 			}
 			
 			const data = await res.json();
+			console.log('[DEBUG] Full hint response:', JSON.stringify(data, null, 2));
+			console.log('[DEBUG] eliminatedIndices type:', typeof data.eliminatedIndices);
+			console.log('[DEBUG] eliminatedIndices value:', data.eliminatedIndices);
+			console.log('[DEBUG] Is array?:', Array.isArray(data.eliminatedIndices));
+			
 			hints = data.hints;
-			eliminatedChoices = [...eliminatedChoices, data.eliminatedIndex];
+			// Backend now returns eliminatedIndices (array of 2 indices)
+			const newEliminatedChoices = data.eliminatedIndices || [];
+			console.log('[DEBUG] About to set eliminatedChoices to:', newEliminatedChoices);
+			eliminatedChoices = newEliminatedChoices;
+			hintUsedThisQuestion = true; // Mark hint as used for this question
+			
+			console.log('[DEBUG] eliminatedChoices after assignment:', eliminatedChoices);
+			console.log('[DEBUG] eliminatedChoices is array?:', Array.isArray(eliminatedChoices));
 			
 			// Play a subtle sound effect
 			sounds.play('correct'); // Reuse existing sound or add a hint sound later
@@ -743,34 +759,11 @@
 			
 		<!-- Header / Stats -->
 		<div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
-			<span>TOPIC: {topic.toUpperCase()}</span>
+			<span></span>
 			<button class="text-red-500 hover:underline" onclick={showFleeDialog}>FLEE</button>
 		</div>
 
-		<!-- Minimized Win Conditions Badge (top-left) -->
-		<div class="absolute top-4 left-4 z-30">
-			<button
-				class="w-10 h-10 rounded-full bg-red-500/95 text-white flex items-center justify-center shadow-md ring-2 ring-white/10 hover:scale-105 transition-transform"
-				onmouseenter={() => showWinMinPopover = true}
-				onmouseleave={() => showWinMinPopover = false}
-				onclick={() => showWinMinPopover = !showWinMinPopover}
-				aria-label="Win conditions"
-			>
-				🏆
-			</button>
-
-			{#if showWinMinPopover}
-				<div class="mt-2 w-44 bg-yellow-50/80 border border-yellow-300 rounded-md p-2 text-xs text-slate-700 shadow-lg">
-					<div class="flex items-center gap-2 font-bold text-yellow-600 text-sm">
-						<span>🏆</span>
-						<span>Win</span>
-					</div>
-					<div class="mt-1 text-xs text-slate-600">{accuracyThreshold()}% accuracy</div>
-					<div class="text-gray-400 uppercase text-[11px]">or</div>
-					<div class="text-slate-600 text-xs">Defeat enemy</div>
-				</div>
-			{/if}
-		</div>
+		
 
 		<!-- Enemy Zone (Top Right) -->
 		<div class="flex justify-end items-center gap-4 p-4 mt-8">
@@ -822,10 +815,10 @@
 		</div>
 
 	<!-- UI Zone -->
-	<div class="mt-4 pb-8">
-		<div class="grid grid-cols-[1fr_14rem] items-start gap-6">
+	<div class="mt-2 pb-4">
+		<div class="grid grid-cols-1 lg:grid-cols-[1fr_12rem] items-start gap-3">
 			<!-- Main Content: Dialogue + Actions (Left, fixed grid column so width stays stable) -->
-			<div class="w-full space-y-4 min-h-[320px]">
+			<div class="w-full space-y-3">
 				<DialogueBox text={
 					feedback 
 						? (feedback.correct 
@@ -847,33 +840,33 @@
 					/>
 				{:else}
 					<button 
-						class="w-full py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 animate-bounce"
+						class="continue-button"
 						onclick={nextQuestion}
 					>
-						CONTINUE BATTLE
+						<span class="continue-bg"></span>
+						<span class="continue-content">
+							<span class="continue-arrow">▶</span>
+							<span>CONTINUE BATTLE</span>
+							<span class="continue-arrow">◀</span>
+						</span>
 					</button>
 				{/if}
 			</div>
 
-			<!-- Right Sidebar: Accuracy Meter  -->
-			<div class="w-56 flex-shrink-0">
-				<div class="space-y-3">
-					<AccuracyGauge 
-						currentAccuracy={currentAccuracy}
-						threshold={accuracyThreshold()}
-						difficulty={difficulty}
-						correctAnswers={correctAnswers}
-						incorrectAnswers={incorrectAnswers}
-					/>
-					
-					<!-- Hint Card -->
-					<HintCard 
-						hints={hints}
-						maxHints={maxHints}
-						onUseHint={useHint}
-						disabled={!!feedback}
-					/>
-				</div>
+			<!-- Right Sidebar: Combined Stats & Items Panel  -->
+			<div class="w-full lg:w-48 flex-shrink-0">
+				<BattleSidebar
+					currentAccuracy={currentAccuracy}
+					threshold={accuracyThreshold()}
+					difficulty={difficulty}
+					correctAnswers={correctAnswers}
+					incorrectAnswers={incorrectAnswers}
+					hints={hints}
+					maxHints={maxHints}
+					onUseHint={useHint}
+					hintDisabled={!!feedback}
+					hintUsedThisQuestion={hintUsedThisQuestion}
+				/>
 			</div>
 		</div>
 	</div>
@@ -900,5 +893,97 @@
 		onClose={() => showReviewModal = false}
 	/>
 {/if}
+
+<style>
+	/* Continue Battle button - RPG styled */
+	.continue-button {
+		position: relative;
+		width: 100%;
+		padding: 12px 20px;
+		background: linear-gradient(180deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+		border: 4px solid transparent;
+		border-radius: 12px;
+		cursor: pointer;
+		overflow: hidden;
+		transition: all 0.2s ease;
+		animation: continue-pulse 1.5s ease-in-out infinite;
+		
+		box-shadow: 
+			0 0 0 2px rgba(96, 165, 250, 0.5),
+			0 0 20px rgba(59, 130, 246, 0.3),
+			0 6px 20px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	}
+	
+	.continue-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 
+			0 0 0 2px rgba(96, 165, 250, 0.7),
+			0 0 30px rgba(59, 130, 246, 0.5),
+			0 8px 24px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	
+	.continue-button:active {
+		transform: translateY(1px);
+	}
+	
+	@keyframes continue-pulse {
+		0%, 100% { 
+			box-shadow: 
+				0 0 0 2px rgba(96, 165, 250, 0.5),
+				0 0 20px rgba(59, 130, 246, 0.3),
+				0 6px 20px rgba(0, 0, 0, 0.3),
+				inset 0 1px 0 rgba(255, 255, 255, 0.2);
+		}
+		50% { 
+			box-shadow: 
+				0 0 0 2px rgba(96, 165, 250, 0.8),
+				0 0 35px rgba(59, 130, 246, 0.5),
+				0 6px 20px rgba(0, 0, 0, 0.3),
+				inset 0 1px 0 rgba(255, 255, 255, 0.2);
+		}
+	}
+	
+	.continue-bg {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, 
+			rgba(255, 255, 255, 0.15) 0%, 
+			transparent 50%
+		);
+	}
+	
+	.continue-content {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
+		font-size: 0.875rem;
+		font-weight: 800;
+		color: white;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+		z-index: 1;
+		font-family: 'Press Start 2P', system-ui, monospace;
+	}
+	
+	.continue-arrow {
+		font-size: 0.875rem;
+		opacity: 0.8;
+		animation: arrow-bounce 0.8s ease infinite;
+	}
+	
+	.continue-arrow:last-child {
+		animation-delay: 0.4s;
+	}
+	
+	@keyframes arrow-bounce {
+		0%, 100% { transform: translateX(0); opacity: 0.8; }
+		50% { transform: translateX(3px); opacity: 1; }
+	}
+</style>
 
 

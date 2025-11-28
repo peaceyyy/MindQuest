@@ -18,11 +18,14 @@ public class TopicScanner {
     
     private static final String DEV_CSV_PATH = "src/questions/external_source/csv/";
     private static final String DEV_XLSX_PATH = "src/questions/external_source/xlsx/";
+    private static final String DEV_JSON_PATH = "src/questions/external_source/json/";
     private static final String PROD_CSV_PATH = "./questions/csv/";
     private static final String PROD_XLSX_PATH = "./questions/xlsx/";
+    private static final String PROD_JSON_PATH = "./questions/json/";
     
     private static final String CSV_BASE_PATH = getBasePath(DEV_CSV_PATH, PROD_CSV_PATH);
     private static final String XLSX_BASE_PATH = getBasePath(DEV_XLSX_PATH, PROD_XLSX_PATH);
+    private static final String JSON_BASE_PATH = getBasePath(DEV_JSON_PATH, PROD_JSON_PATH);
     
     /**
      * Detects if running from JAR and returns appropriate base path.
@@ -57,6 +60,11 @@ public class TopicScanner {
             case CUSTOM_EXCEL:
                 System.out.println("[TopicScanner] Scanning Excel from: " + XLSX_BASE_PATH);
                 topics.addAll(scanDirectory(XLSX_BASE_PATH, ".xlsx"));
+                break;
+
+            case CUSTOM_JSON:
+                System.out.println("[TopicScanner] Scanning JSON from: " + JSON_BASE_PATH);
+                topics.addAll(scanDirectory(JSON_BASE_PATH, ".json"));
                 break;
                 
             case BUILTIN_JSON:
@@ -134,6 +142,9 @@ public class TopicScanner {
                 
             case CUSTOM_EXCEL:
                 return XLSX_BASE_PATH + topic + ".xlsx";
+
+            case CUSTOM_JSON:
+                return JSON_BASE_PATH + topic + ".json";
                 
             case BUILTIN_JSON:
         

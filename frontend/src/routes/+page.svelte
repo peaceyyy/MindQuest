@@ -1,11 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import CustomQuestionsModal from '$lib/components/CustomQuestionsModal.svelte';
 	
 	let topic = $state('ai');
 	let difficulty = $state('easy');
 	let globalPoints = $state(0);
 	let loading = $state(false);
+	let showUploadModal = $state(false);
+	let devMode = $state(import.meta.env.DEV); // Only show dev tools in dev mode
+	
+	// Quick test files available in questions folder
+	const testFiles = [
+		{ name: 'philosophy.csv', type: 'csv' },
+		{ name: 'philosophy.xlsx', type: 'xlsx' }
+	];
 	
 	onMount(async () => {
 		await loadGlobalPoints();
@@ -37,13 +46,75 @@
 	function startGame() {
 		goto(`/play?topic=${topic}&difficulty=${difficulty}`);
 	}
+
+	function handleUploadSuccess(event: CustomEvent) {
+		// Automatically select the uploaded topic
+		// We might need to add it to topicInfo if we want it to show up nicely, 
+		// or just handle it as a custom topic.
+		// For now, let's just alert or log, and maybe set the topic variable.
+		// But topicInfo is hardcoded. We might need to allow custom topics in the UI.
+		// Since the backend returns the topic name, we can set `topic` to it.
+		// But the UI expects `topic` to be a key in `topicInfo`.
+		// We can add a dynamic entry to `topicInfo` or just handle it.
+		
+		const customTopic = event.detail.customTopicName;
+		topicInfo[customTopic] = { name: customTopic.toUpperCase(), desc: 'Custom Question Set' };
+		topic = customTopic;
+		showUploadModal = false;
+	}
+
+	async function quickLoadTestFile(filename: string) {
+		loading = true;
+		try {
+			const res = await fetch(`http://localhost:7070/api/test/load-file?filename=${encodeURIComponent(filename)}`, {
+				method: 'POST'
+			});
+
+			if (!res.ok) {
+				// Try to parse JSON error, otherwise fall back to plain text
+				let message = `Failed to load ${filename}`;
+				try {
+					const err = await res.json();
+					message = err.message || JSON.stringify(err);
+				} catch (e) {
+					try {
+						const text = await res.text();
+						message = text;
+					} catch (e2) {
+						// ignore
+					}
+				}
+				alert(message);
+				return;
+			}
+
+			// Parse JSON safely; if parsing fails, show text
+			let data: any = null;
+			try {
+				data = await res.json();
+			} catch (e) {
+				const text = await res.text();
+				alert(`Loaded (unexpected response): ${text}`);
+				return;
+			}
+
+			const customTopic = data.topicName || data.customTopicName || filename.replace(/\..+$/, '');
+			topicInfo[customTopic] = { name: customTopic.toUpperCase(), desc: `Test file: ${filename}` };
+			topic = customTopic;
+			alert(`Loaded ${data.questionsLoaded ?? data.questionsLoaded} questions from ${filename}`);
+		} catch (err: any) {
+			alert(`Error: ${err.message}`);
+		} finally {
+			loading = false;
+		}
+	}
 	
 	// Map topics to display info
-	const topicInfo: Record<string, {name: string, desc: string}> = {
+	let topicInfo: Record<string, {name: string, desc: string}> = $state({
 		ai: { name: 'ARTIFICIAL INTELLIGENCE', desc: 'Battle the Neural Network Beast' },
 		cs: { name: 'COMPUTER SCIENCE', desc: 'Face the Binary Code Phantom' },
 		philosophy: { name: 'PHILOSOPHY', desc: 'Challenge the Ancient Thinker' }
-	};
+	});
 </script>
 
 <div class="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-900 to-slate-900 text-white flex items-center justify-center p-4">
@@ -118,6 +189,32 @@
 			>
 				⚔️ Begin Battle ⚔️
 			</button>
+			
+			<!-- Upload Button -->
+			<button
+				onclick={() => showUploadModal = true}
+				class="w-full mt-4 py-3 bg-gray-700 border-2 border-gray-500 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-gray-600 transition-all"
+			>
+				📂 Upload Custom Questions
+			</button>
+
+			<!-- Dev Quick Test Buttons -->
+			{#if devMode}
+				<div class="mt-6 p-4 border-2 border-dashed border-orange-500/50 rounded-lg bg-orange-500/10">
+					<div class="text-xs text-orange-400 font-bold uppercase tracking-widest mb-3">Dev Quick Test</div>
+					<div class="flex flex-wrap gap-2">
+						{#each testFiles as file}
+							<button
+								onclick={() => quickLoadTestFile(file.name)}
+								disabled={loading}
+								class="px-3 py-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded transition-all disabled:opacity-50"
+							>
+								{file.name}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Footer Hint -->
@@ -126,6 +223,13 @@
 		</div>
 	</div>
 </div>
+
+{#if showUploadModal}
+	<CustomQuestionsModal 
+		on:close={() => showUploadModal = false}
+		on:uploadSuccess={handleUploadSuccess}
+	/>
+{/if}
 
 <style>
 	.pixel-text {

@@ -78,6 +78,9 @@ public class QuestionBankFactory {
             case CUSTOM_EXCEL:
                 return new ExcelQuestionLoader();
             
+            case CUSTOM_JSON:
+                return new CustomJsonQuestionLoader();
+
             case CUSTOM_CSV:
                 return new CsvQuestionLoader();
             

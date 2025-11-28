@@ -1,5 +1,5 @@
 <script lang="ts">
-    import CustomQuestionsUploader from '$lib/components/CustomQuestionsUploader.svelte';
+    import CustomQuestionsUploader from './CustomQuestionsUploader.svelte';
     import { createEventDispatcher } from 'svelte';
 
     const dispatch = createEventDispatcher();
@@ -10,8 +10,6 @@
 
     function handleUploadSuccess(event: CustomEvent) {
         dispatch('uploadSuccess', event.detail);
-        // Optional: Close modal automatically on success after a delay?
-        // For now, let the user close it or see the success message.
     }
 </script>
 
@@ -43,7 +41,7 @@
 
     .modal-content {
         position: relative;
-        background: transparent; /* The component has its own background */
+        background: transparent;
         padding: 0;
         border-radius: 8px;
         max-width: 90%;

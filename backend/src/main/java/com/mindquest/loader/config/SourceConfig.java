@@ -10,6 +10,7 @@ public class SourceConfig {
         BUILTIN_JSON,       // Use built-in JSON files from resources/questions/
         CUSTOM_CSV,         // Load from custom CSV file (requires path)
         CUSTOM_EXCEL,       // Load from custom Excel file (requires path)
+        CUSTOM_JSON,        // Load from custom JSON file (requires path)
         GEMINI_API          // Generate questions via Gemini API
     }
     

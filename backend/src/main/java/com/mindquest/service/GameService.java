@@ -1,6 +1,7 @@
 package com.mindquest.service;
 
 import com.mindquest.controller.SessionManager;
+import com.mindquest.loader.config.SourceConfig;
 import com.mindquest.model.QuestionBank;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
@@ -338,4 +339,8 @@ public class GameService {
     public int getCorrectStreak() { return correctStreak; }
     
     public int getWrongStreak() { return wrongStreak; }
+
+    public void setSourceConfig(SourceConfig config) {
+        sessionManager.setSourceConfig(config);
+    }
 }
