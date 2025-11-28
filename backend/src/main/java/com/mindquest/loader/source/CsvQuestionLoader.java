@@ -79,16 +79,24 @@ public class CsvQuestionLoader implements QuestionSource {
     private static List<Question> loadQuestionsFromFile(String filePath, String difficulty) throws IOException {
         List<Question> allQuestions = loadQuestions(filePath);
         
+        System.out.println("[CSV Loader DEBUG] Total questions loaded from file: " + allQuestions.size());
+        
         if (difficulty == null || difficulty.isEmpty()) {
+            System.out.println("[CSV Loader DEBUG] No difficulty filter, returning all questions");
             return allQuestions;
         }
         
         List<Question> filtered = new ArrayList<>();
         for (Question q : allQuestions) {
+            System.out.println("[CSV Loader DEBUG] Checking question: " + q.getClass().getSimpleName() + " against difficulty: " + difficulty);
             if (matchesDifficulty(q, difficulty)) {
+                System.out.println("[CSV Loader DEBUG] ✓ Matched!");
                 filtered.add(q);
+            } else {
+                System.out.println("[CSV Loader DEBUG] ✗ Did not match");
             }
         }
+        System.out.println("[CSV Loader DEBUG] Filtered result: " + filtered.size() + " questions");
         return filtered;
     }
 

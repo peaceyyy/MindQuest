@@ -414,24 +414,42 @@ public class GameServer {
         try {
             // Ensure directory exists
             Files.createDirectories(Paths.get(targetDir));
-            
-            // Save file
+
             Path targetPath = Paths.get(targetDir + filename);
+            Path tmpPath = Paths.get(targetDir + filename + ".tmp");
+
+            // Write to temp file first
             try (java.io.InputStream is = uploadedFile.content()) {
-                Files.copy(is, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(is, tmpPath, StandardCopyOption.REPLACE_EXISTING);
             }
-            
+
+            // On Windows, delete target first if it exists (avoids AccessDeniedException)
+            if (Files.exists(targetPath)) {
+                try {
+                    Files.delete(targetPath);
+                } catch (Exception deleteEx) {
+                    System.err.println("[Upload] Could not delete existing file, retrying: " + deleteEx.getMessage());
+                    // Brief pause to let any file handles release
+                    Thread.sleep(100);
+                    Files.delete(targetPath);
+                }
+            }
+
+            // Now move temp to target
+            Files.move(tmpPath, targetPath);
+
             String topicName = filename.substring(0, filename.lastIndexOf('.'));
-            
+
             System.out.println("[Upload] Saved " + filename + " to " + targetDir);
-            
+
             ctx.json(Map.of(
                 "customTopicName", topicName,
                 "message", "File uploaded successfully"
             ));
-            
+
         } catch (Exception e) {
             System.err.println("[Upload] Error saving file: " + e.getMessage());
+            e.printStackTrace();
             ctx.status(500).json(Map.of("message", "Failed to save file: " + e.getMessage()));
         }
     }
@@ -447,16 +465,16 @@ public class GameServer {
             return;
         }
 
-        // Determine source and target paths based on extension
+        // Determine extension
         String extension = "";
         int dotIdx = filename.lastIndexOf('.');
         if (dotIdx > 0) {
             extension = filename.substring(dotIdx).toLowerCase();
         }
 
+        // Determine source and target directories based on extension
         String sourceDir;
         String targetDir;
-        
         switch (extension) {
             case ".csv":
                 sourceDir = "../questions/csv/";
@@ -475,9 +493,26 @@ public class GameServer {
                 return;
         }
 
-        Path sourcePath = Paths.get(sourceDir + filename);
-        if (!Files.exists(sourcePath)) {
-            ctx.status(404).json(Map.of("message", "Test file not found: " + filename));
+        // Try a few possible locations for the source test file. Depending on
+        // how the developer started the backend the working directory may vary.
+        java.util.List<Path> candidates = java.util.List.of(
+            Paths.get(sourceDir + filename),                                 // ../questions/{type}/file
+            Paths.get("questions/" + sourceDir.replace("../", "") + filename), // projectRoot/questions/{type}/file
+            Paths.get("src/questions/external_source/" + (extension.equals(".csv") ? "csv/" : extension.equals(".xlsx") ? "xlsx/" : "json/") + filename) // backend copy location
+        );
+
+        Path sourcePath = null;
+        java.util.List<String> tried = new java.util.ArrayList<>();
+        for (Path p : candidates) {
+            tried.add(p.toString());
+            if (Files.exists(p)) {
+                sourcePath = p;
+                break;
+            }
+        }
+
+        if (sourcePath == null) {
+            ctx.status(404).json(Map.of("message", "Test file not found. Tried: " + String.join(", ", tried)));
             return;
         }
 
@@ -491,7 +526,7 @@ public class GameServer {
             
             String topicName = filename.substring(0, dotIdx);
             
-            // Try to count questions loaded (optional - for feedback)
+            // Use the actual loader to count questions (reuse existing logic)
             int questionsLoaded = 0;
             try {
                 SourceConfig.SourceType sourceType = extension.equals(".csv") 
@@ -512,7 +547,7 @@ public class GameServer {
                 System.err.println("[TestLoad] Could not count questions: " + e.getMessage());
             }
             
-            System.out.println("[TestLoad] Copied " + filename + " to " + targetDir + " (" + questionsLoaded + " questions)");
+            System.out.println("[TestLoad] Copied " + filename + " from " + sourcePath + " to " + targetDir + " (" + questionsLoaded + " questions)");
             
             ctx.json(Map.of(
                 "topicName", topicName,
@@ -522,6 +557,7 @@ public class GameServer {
             
         } catch (Exception e) {
             System.err.println("[TestLoad] Error loading test file: " + e.getMessage());
+            e.printStackTrace();
             ctx.status(500).json(Map.of("message", "Failed to load test file: " + e.getMessage()));
         }
     }

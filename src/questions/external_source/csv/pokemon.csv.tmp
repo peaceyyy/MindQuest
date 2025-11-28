@@ -1,0 +1,7 @@
+topic,difficulty,questionText,choice0,choice1,choice2,choice3,correctIndex,
+Pokemon,Easy,Which Pokémon is widely considered the mascot of the franchise?,Bulbasaur,Charizard,Pikachu,Jigglypuff,2,
+Pokemon,Easy,What type is super effective against Fire-type Pokémon?,Grass,Water,Bug,Ice,1,
+Pokemon,Medium,What item is required to evolve Pikachu into Raichu?,Fire Stone,Moon Stone,Thunder Stone,Sun Stone,2,
+Pokemon,Medium,Which region is the setting for the Pokémon Black and White games?,Kanto,Unova,Sinnoh,Kalos,1,
+Pokemon,Hard,"Which Pokémon is known as the ""Alpha Pokémon"" and is said to have created the universe?",Mew,Dialga,Palkia,Arceus,3,
+Pokemon,Hard,In which Generation was the Fairy type introduced?,Generation IV,Generation V,Generation VI,Generation VII,2,

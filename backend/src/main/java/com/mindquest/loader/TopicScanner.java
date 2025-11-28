@@ -19,9 +19,9 @@ public class TopicScanner {
     private static final String DEV_CSV_PATH = "src/questions/external_source/csv/";
     private static final String DEV_XLSX_PATH = "src/questions/external_source/xlsx/";
     private static final String DEV_JSON_PATH = "src/questions/external_source/json/";
-    private static final String PROD_CSV_PATH = "./questions/csv/";
-    private static final String PROD_XLSX_PATH = "./questions/xlsx/";
-    private static final String PROD_JSON_PATH = "./questions/json/";
+    private static final String PROD_CSV_PATH = "src/questions/external_source/csv/";
+    private static final String PROD_XLSX_PATH = "src/questions/external_source/xlsx/";
+    private static final String PROD_JSON_PATH = "src/questions/external_source/json/";
     
     private static final String CSV_BASE_PATH = getBasePath(DEV_CSV_PATH, PROD_CSV_PATH);
     private static final String XLSX_BASE_PATH = getBasePath(DEV_XLSX_PATH, PROD_XLSX_PATH);
