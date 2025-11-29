@@ -71,6 +71,8 @@ public class GameServer {
             
             // Dev: Quick test file loading
             app.post("/api/test/load-file", GameServer::loadTestFile);
+            // Debug: list external topics/files seen by the TopicScanner
+            app.get("/api/debug/list-external", GameServer::listExternal);
 
             // Game flow
             app.post("/api/sessions/{id}/start", GameServer::startRound);
@@ -299,6 +301,36 @@ public class GameServer {
         ctx.json(Map.of(
             "message", "Round abandoned successfully",
             "globalPoints", gameService.getGlobalPoints()
+        ));
+    }
+
+    /**
+     * Debug endpoint to list external topics/files that TopicScanner detects.
+     * Query parameter: type=csv|xlsx|json
+     */
+    private static void listExternal(Context ctx) {
+        String type = ctx.queryParam("type");
+        if (type == null) type = "csv";
+
+        SourceConfig.SourceType sourceType;
+        switch (type.toLowerCase()) {
+            case "xlsx": sourceType = SourceConfig.SourceType.CUSTOM_EXCEL; break;
+            case "json": sourceType = SourceConfig.SourceType.CUSTOM_JSON; break;
+            default: sourceType = SourceConfig.SourceType.CUSTOM_CSV; break;
+        }
+
+        java.util.List<String> topics = TopicScanner.getAvailableTopics(sourceType);
+
+        // For convenience include an example file path for the first topic if available
+        String examplePath = "";
+        if (!topics.isEmpty()) {
+            examplePath = TopicScanner.getTopicFilePath(topics.get(0), sourceType);
+        }
+
+        ctx.json(Map.of(
+            "type", type.toLowerCase(),
+            "topics", topics,
+            "examplePath", examplePath
         ));
     }
     

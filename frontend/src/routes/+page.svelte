@@ -7,8 +7,9 @@
 	let difficulty = $state('easy');
 	let globalPoints = $state(0);
 	let loading = $state(false);
-	let showUploadModal = $state(false);
+	let showCustomModal = $state(false);
 	let devMode = $state(import.meta.env.DEV); // Only show dev tools in dev mode
+	let selectedCustomTopic = $state<string | null>(null); // Track selected custom topic
 	
 	// Quick test files available in questions folder
 	const testFiles = [
@@ -44,23 +45,16 @@
 	}
 	
 	function startGame() {
-		goto(`/play?topic=${topic}&difficulty=${difficulty}`);
+		// If custom topic is selected, use the actual custom topic name
+		const actualTopic = topic === 'custom' && selectedCustomTopic ? selectedCustomTopic : topic;
+		goto(`/play?topic=${actualTopic}&difficulty=${difficulty}`);
 	}
 
-	function handleUploadSuccess(event: CustomEvent) {
-		// Automatically select the uploaded topic
-		// We might need to add it to topicInfo if we want it to show up nicely, 
-		// or just handle it as a custom topic.
-		// For now, let's just alert or log, and maybe set the topic variable.
-		// But topicInfo is hardcoded. We might need to allow custom topics in the UI.
-		// Since the backend returns the topic name, we can set `topic` to it.
-		// But the UI expects `topic` to be a key in `topicInfo`.
-		// We can add a dynamic entry to `topicInfo` or just handle it.
-		
-		const customTopic = event.detail.customTopicName;
-		topicInfo[customTopic] = { name: customTopic.toUpperCase(), desc: 'Custom Question Set' };
-		topic = customTopic;
-		showUploadModal = false;
+	function handleCustomTopicSelect(topicName: string) {
+		// User selected a custom topic from the modal
+		selectedCustomTopic = topicName;
+		topic = 'custom'; // Mark that custom is selected
+		showCustomModal = false;
 	}
 
 	async function quickLoadTestFile(filename: string) {
@@ -98,10 +92,10 @@
 				return;
 			}
 
-			const customTopic = data.topicName || data.customTopicName || filename.replace(/\..+$/, '');
-			topicInfo[customTopic] = { name: customTopic.toUpperCase(), desc: `Test file: ${filename}` };
-			topic = customTopic;
-			alert(`Loaded ${data.questionsLoaded ?? data.questionsLoaded} questions from ${filename}`);
+		const customTopic = data.topicName || data.customTopicName || filename.replace(/\..+$/, '');
+		selectedCustomTopic = customTopic;
+		topic = 'custom';
+		alert(`Loaded ${data.questionsLoaded ?? data.questionsLoaded} questions from ${filename}`);
 		} catch (err: any) {
 			alert(`Error: ${err.message}`);
 		} finally {
@@ -109,11 +103,21 @@
 		}
 	}
 	
-	// Map topics to display info
-	let topicInfo: Record<string, {name: string, desc: string}> = $state({
+	// Map topics to display info (static topics)
+	const staticTopics = {
 		ai: { name: 'ARTIFICIAL INTELLIGENCE', desc: 'Battle the Neural Network Beast' },
 		cs: { name: 'COMPUTER SCIENCE', desc: 'Face the Binary Code Phantom' },
 		philosophy: { name: 'PHILOSOPHY', desc: 'Challenge the Ancient Thinker' }
+	};
+	
+	// Reactive topicInfo that includes custom topic with dynamic description
+	let topicInfo = $derived({
+		...staticTopics,
+		custom: { 
+			name: 'CUSTOM QUESTIONS', 
+			desc: selectedCustomTopic || 'Select your custom question set', 
+			color: 'orange' 
+		}
 	});
 </script>
 
@@ -190,13 +194,7 @@
 				⚔️ Begin Battle ⚔️
 			</button>
 			
-			<!-- Upload Button -->
-			<button
-				onclick={() => showUploadModal = true}
-				class="w-full mt-4 py-3 bg-gray-700 border-2 border-gray-500 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-gray-600 transition-all"
-			>
-				📂 Upload Custom Questions
-			</button>
+
 
 			<!-- Dev Quick Test Buttons -->
 			{#if devMode}
@@ -224,10 +222,10 @@
 	</div>
 </div>
 
-{#if showUploadModal}
+{#if showCustomModal}
 	<CustomQuestionsModal 
-		on:close={() => showUploadModal = false}
-		on:uploadSuccess={handleUploadSuccess}
+		onclose={() => showCustomModal = false}
+		ontopicselect={handleCustomTopicSelect}
 	/>
 {/if}
 

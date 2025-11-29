@@ -1,13 +1,14 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-
-    const dispatch = createEventDispatcher();
+    let { onuploadsuccess, onuploaderror } = $props<{
+        onuploadsuccess?: (detail: { customTopicName: string }) => void;
+        onuploaderror?: (detail: { message: string }) => void;
+    }>();
 
     let fileInput: HTMLInputElement;
-    let selectedFile: File | null = null;
-    let isUploading = false;
-    let errorMessage: string | null = null;
-    let successMessage: string | null = null;
+    let selectedFile = $state<File | null>(null);
+    let isUploading = $state(false);
+    let errorMessage = $state<string | null>(null);
+    let successMessage = $state<string | null>(null);
 
     function handleFileSelect(event: Event) {
         const target = event.target as HTMLInputElement;
@@ -44,7 +45,7 @@
 
             const data = await response.json();
             successMessage = `Successfully uploaded topic: ${data.customTopicName}`;
-            dispatch('uploadSuccess', { customTopicName: data.customTopicName });
+            onuploadsuccess?.({ customTopicName: data.customTopicName });
             
             // Clear selection after success
             selectedFile = null;
@@ -53,7 +54,7 @@
         } catch (error: any) {
             console.error('Upload error:', error);
             errorMessage = error.message || "An error occurred during upload.";
-            dispatch('uploadError', { message: errorMessage });
+            onuploaderror?.({ message: errorMessage });
         } finally {
             isUploading = false;
         }
@@ -68,7 +69,7 @@
             type="file" 
             accept=".csv, .xlsx, .json" 
             bind:this={fileInput}
-            on:change={handleFileSelect}
+            onchange={handleFileSelect}
         />
         <p class="help-text">Supported formats: .csv, .xlsx, .json</p>
     </div>
@@ -76,7 +77,7 @@
     {#if selectedFile}
         <div class="selected-file">
             <span>Selected: <strong>{selectedFile.name}</strong></span>
-            <button on:click={uploadFile} disabled={isUploading}>
+            <button onclick={uploadFile} disabled={isUploading}>
                 {isUploading ? 'Uploading...' : 'Upload'}
             </button>
         </div>

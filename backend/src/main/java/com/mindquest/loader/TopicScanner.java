@@ -19,32 +19,55 @@ public class TopicScanner {
     private static final String DEV_CSV_PATH = "src/questions/external_source/csv/";
     private static final String DEV_XLSX_PATH = "src/questions/external_source/xlsx/";
     private static final String DEV_JSON_PATH = "src/questions/external_source/json/";
-    private static final String PROD_CSV_PATH = "src/questions/external_source/csv/";
-    private static final String PROD_XLSX_PATH = "src/questions/external_source/xlsx/";
-    private static final String PROD_JSON_PATH = "src/questions/external_source/json/";
-    
-    private static final String CSV_BASE_PATH = getBasePath(DEV_CSV_PATH, PROD_CSV_PATH);
-    private static final String XLSX_BASE_PATH = getBasePath(DEV_XLSX_PATH, PROD_XLSX_PATH);
-    private static final String JSON_BASE_PATH = getBasePath(DEV_JSON_PATH, PROD_JSON_PATH);
+    private static final String PROD_CSV_PATH = "data/csv/";
+    private static final String PROD_XLSX_PATH = "data/xlsx/";
+    private static final String PROD_JSON_PATH = "data/json/";
+
+    private static final String CSV_BASE_PATH = resolveBasePath(DEV_CSV_PATH, PROD_CSV_PATH);
+    private static final String XLSX_BASE_PATH = resolveBasePath(DEV_XLSX_PATH, PROD_XLSX_PATH);
+    private static final String JSON_BASE_PATH = resolveBasePath(DEV_JSON_PATH, PROD_JSON_PATH);
     
     /**
      * Detects if running from JAR and returns appropriate base path.
      */
-    private static String getBasePath(String devPath, String prodPath) {
+    private static String resolveBasePath(String devPath, String prodPath) {
         try {
-            String classPath = TopicScanner.class.getProtectionDomain()
-                .getCodeSource().getLocation().getPath();
-            
-            // Running from JAR → use external data directory
-            if (classPath.endsWith(".jar")) {
-                return prodPath;
+            String userDir = System.getProperty("user.dir");
+            List<Path> candidates = new ArrayList<>();
+
+            // Common dev layout when running from backend/ folder
+            candidates.add(Paths.get(userDir, devPath));
+
+            // Common dev layout when running from project root (parent contains backend/)
+            candidates.add(Paths.get(userDir, "backend", devPath));
+
+            // Try parent directory of userDir (if running from backend/ or other nested location)
+            Path parent = Paths.get(userDir).getParent();
+            if (parent != null) {
+                candidates.add(parent.resolve(devPath));
+                candidates.add(parent.resolve("backend").resolve(devPath));
             }
+
+            // Production external data directory candidate
+            candidates.add(Paths.get(userDir, prodPath));
+
+            // Evaluate candidates and return first existing directory
+            for (Path p : candidates) {
+                if (p != null) {
+                    File f = p.toFile();
+                    if (f.exists() && f.isDirectory()) {
+                        return p.toString() + File.separator;
+                    }
+                }
+            }
+
+            // If none exist, return a deterministic absolute path (first dev candidate)
+            Path fallback = Paths.get(userDir, devPath);
+            return fallback.toString() + File.separator;
         } catch (Exception e) {
-            // Fallback to dev path if detection fails
+            // Best-effort fallback: return devPath as-is
+            return devPath;
         }
-        
-        // Development or detection failed → use src/ directory
-        return devPath;
     }
     
 
@@ -106,7 +129,14 @@ public class TopicScanner {
                 return topics;
             }
             
-            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(extension));
+            File[] files = dir.listFiles((d, name) -> {
+                String lower = name.toLowerCase();
+                // Ignore temporary files and hidden/system files
+                if (lower.endsWith(".tmp") || lower.endsWith("~") || lower.startsWith(".")) {
+                    return false;
+                }
+                return lower.endsWith(extension);
+            });
             
             if (files != null) {
                 for (File file : files) {
