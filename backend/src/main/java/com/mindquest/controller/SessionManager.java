@@ -97,6 +97,35 @@ public class SessionManager {
             );
         });
     }
+    
+    /**
+     * Starts a new round with pre-loaded questions (e.g., from Gemini AI or saved sets).
+     * This bypasses the normal question loading from the QuestionBank.
+     * Note: Inline questions are NOT added to usedQuestionIds since they're 
+     * self-contained sets meant to be replayable.
+     */
+    public void startNewRoundWithQuestions(String topic, String difficulty, List<Question> questions) {
+        // Reset player for round
+        player.resetForRound();
+        player.setHintsForDifficulty(difficulty);
+        
+        // Shuffle questions for variety on replay
+        List<Question> shuffledQuestions = new ArrayList<>(questions);
+        Collections.shuffle(shuffledQuestions);
+        
+        state.updateAndGet(s -> {
+            // Don't add inline questions to usedQuestionIds - they're replayable
+            return new SessionState(
+                shuffledQuestions,
+                s.usedQuestionIds,  // Keep existing used IDs, don't add new ones
+                topic,
+                difficulty,
+                0,
+                s.globalPoints,
+                s.sourceConfig
+            );
+        });
+    }
 
     /**
      * Starts a mixed-topics round using the provided configuration.

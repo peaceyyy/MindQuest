@@ -7,6 +7,7 @@ import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 import com.mindquest.service.dto.AnswerResult;
 import com.mindquest.service.dto.RoundSummary;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,6 +64,28 @@ public class GameService {
         wrongStreak = 0;
         
         // (hints are per-round and reset automatically, so not snapshotted)
+        snapshotHp = player.getHp();
+        snapshotScore = player.getScore();
+    }
+    
+    /**
+     * Starts a new round with pre-loaded questions (e.g., from Gemini AI).
+     * Useful for testing LLM-generated questions without going through the QuestionBank.
+     */
+    public void startNewRoundWithQuestions(String topic, String difficulty, List<Question> questions) {
+        sessionManager.startNewRoundWithQuestions(topic, difficulty, questions);
+        
+        // Reset round statistics
+        correctAnswersCount = 0;
+        incorrectAnswersCount = 0;
+        totalAnswerTimeMs = 0;
+        answersWithTime = 0;
+        
+        // Reset streaks
+        correctStreak = 0;
+        wrongStreak = 0;
+        
+        // Snapshot HP/score for revert
         snapshotHp = player.getHp();
         snapshotScore = player.getScore();
     }

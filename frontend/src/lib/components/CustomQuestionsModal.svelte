@@ -4,9 +4,13 @@
 
     let { onclose, ontopicselect } = $props<{
         onclose: () => void;
-        ontopicselect: (topicName: string) => void;
+        ontopicselect: (topicName: string, source?: 'file' | 'gemini' | 'saved', geminiQuestions?: any[]) => void;
     }>();
 
+    // Tab state
+    let activeTab = $state<'files' | 'gemini' | 'saved'>('files');
+
+    // === FILES TAB STATE ===
     type TopicItem = {
         name: string;
         type: 'csv' | 'xlsx' | 'json';
@@ -17,8 +21,47 @@
     let error = $state<string | null>(null);
     let selectedFilter = $state<'all' | 'csv' | 'xlsx' | 'json'>('all');
 
+    // === GEMINI TAB STATE ===
+    let geminiAvailable = $state(false);
+    let geminiLoading = $state(true);
+    let geminiError = $state<string | null>(null);
+    let geminiTopic = $state('');
+    let geminiDifficulty = $state<'easy' | 'medium' | 'hard'>('medium');
+    let geminiQuestionCount = $state(5);
+    let geminiGenerating = $state(false);
+    let geminiGeneratedQuestions = $state<any[]>([]);
+    let geminiGenerationTime = $state(0);
+
+    // === SAVED SETS TAB STATE ===
+    type SavedSet = {
+        id: string;
+        name: string;
+        topic: string;
+        difficulty: string;
+        questionCount: number;
+        provider: string;
+        createdAt: number;
+    };
+    let savedSets = $state<SavedSet[]>([]);
+    let savedSetsLoading = $state(false);
+    let savedSetsError = $state<string | null>(null);
+    let loadingSavedSetId = $state<string | null>(null);
+
+    // === SAVE MODAL STATE ===
+    let showSaveModal = $state(false);
+    let saveSetName = $state('');
+    let saving = $state(false);
+    let saveError = $state<string | null>(null);
+
+    // Topic character limit
+    const TOPIC_MAX_LENGTH = 100;
+
     onMount(async () => {
-        await loadCustomTopics();
+        await Promise.all([
+            loadCustomTopics(),
+            checkGeminiStatus(),
+            loadSavedSets()
+        ]);
     });
 
     // Filter computed derived state
@@ -27,6 +70,10 @@
             ? customTopics 
             : customTopics.filter(t => t.type === selectedFilter)
     );
+
+    // Topic character count
+    let topicCharCount = $derived(geminiTopic.length);
+    let topicValid = $derived(geminiTopic.trim().length >= 3 && geminiTopic.length <= TOPIC_MAX_LENGTH);
 
     // Helper functions for type display
     function getTypeLabel(type: 'csv' | 'xlsx' | 'json'): string {
@@ -75,18 +122,208 @@
         }
     }
 
+    async function checkGeminiStatus() {
+        geminiLoading = true;
+        try {
+            const res = await fetch('http://localhost:7070/api/gemini/status');
+            const data = await res.json();
+            geminiAvailable = data.available;
+            if (!data.available) {
+                geminiError = data.message || 'Gemini API key not configured';
+            }
+        } catch (err: any) {
+            console.error('Failed to check Gemini status:', err);
+            geminiError = 'Could not connect to server';
+            geminiAvailable = false;
+        } finally {
+            geminiLoading = false;
+        }
+    }
+
+    async function generateGeminiQuestions() {
+        if (!topicValid || geminiGenerating) return;
+        
+        geminiGenerating = true;
+        geminiError = null;
+        geminiGeneratedQuestions = [];
+        const startTime = Date.now();
+        
+        try {
+            const res = await fetch('http://localhost:7070/api/gemini/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: geminiTopic.trim(),
+                    difficulty: geminiDifficulty,
+                    count: geminiQuestionCount  // Backend expects 'count', not 'questionCount'
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.message || data.error || 'Generation failed');
+            }
+            
+            geminiGeneratedQuestions = data.questions || [];
+            geminiGenerationTime = Date.now() - startTime;
+            
+        } catch (err: any) {
+            console.error('Gemini generation failed:', err);
+            geminiError = err.message || 'Failed to generate questions';
+        } finally {
+            geminiGenerating = false;
+        }
+    }
+
+    function useGeminiQuestions() {
+        if (geminiGeneratedQuestions.length === 0) return;
+        ontopicselect(geminiTopic.trim(), 'gemini', geminiGeneratedQuestions);
+    }
+
     function close() {
         onclose();
     }
 
     function selectTopic(topicName: string) {
-        ontopicselect(topicName);
+        ontopicselect(topicName, 'file');
     }
 
     async function handleUploadSuccess(detail: { customTopicName: string }) {
         // Reload the list after successful upload
         await loadCustomTopics();
     }
+
+    // === SAVED SETS FUNCTIONS ===
+    async function loadSavedSets() {
+        savedSetsLoading = true;
+        savedSetsError = null;
+        try {
+            const res = await fetch('http://localhost:7070/api/saved-sets');
+            const data = await res.json();
+            savedSets = data.sets || [];
+        } catch (err: any) {
+            console.error('Failed to load saved sets:', err);
+            savedSetsError = 'Failed to load saved question sets.';
+        } finally {
+            savedSetsLoading = false;
+        }
+    }
+
+    function openSaveModal() {
+        // Generate default name from topic
+        saveSetName = `${geminiTopic.trim()} - ${geminiDifficulty.charAt(0).toUpperCase() + geminiDifficulty.slice(1)}`;
+        saveError = null;
+        showSaveModal = true;
+    }
+
+    function closeSaveModal() {
+        showSaveModal = false;
+        saveSetName = '';
+        saveError = null;
+    }
+
+    async function saveQuestionSet() {
+        if (!saveSetName.trim() || geminiGeneratedQuestions.length === 0) return;
+        
+        saving = true;
+        saveError = null;
+        
+        try {
+            const res = await fetch('http://localhost:7070/api/saved-sets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: saveSetName.trim(),
+                    topic: geminiTopic.trim(),
+                    difficulty: geminiDifficulty,
+                    provider: 'gemini',
+                    questions: geminiGeneratedQuestions
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to save');
+            }
+            
+            // Reload saved sets and close modal
+            await loadSavedSets();
+            closeSaveModal();
+            
+            // Switch to saved tab to show the new set
+            activeTab = 'saved';
+            
+        } catch (err: any) {
+            console.error('Failed to save question set:', err);
+            saveError = err.message || 'Failed to save question set';
+        } finally {
+            saving = false;
+        }
+    }
+
+    async function selectSavedSet(setId: string) {
+        loadingSavedSetId = setId;
+        
+        try {
+            const res = await fetch(`http://localhost:7070/api/saved-sets/${setId}/questions`);
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to load questions');
+            }
+            
+            // Use the saved questions
+            ontopicselect(data.topic, 'saved', data.questions);
+            
+        } catch (err: any) {
+            console.error('Failed to load saved set:', err);
+            savedSetsError = err.message || 'Failed to load question set';
+        } finally {
+            loadingSavedSetId = null;
+        }
+    }
+
+    async function deleteSavedSet(setId: string, setName: string) {
+        if (!confirm(`Delete "${setName}"? This cannot be undone.`)) return;
+        
+        try {
+            const res = await fetch(`http://localhost:7070/api/saved-sets/${setId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to delete');
+            }
+            
+            // Reload the list
+            await loadSavedSets();
+            
+        } catch (err: any) {
+            console.error('Failed to delete saved set:', err);
+            savedSetsError = err.message || 'Failed to delete question set';
+        }
+    }
+
+    function formatDate(timestamp: number): string {
+        return new Date(timestamp).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
+    function getDifficultyColor(difficulty: string): string {
+        switch (difficulty.toLowerCase()) {
+            case 'easy': return '#10b981';
+            case 'medium': return '#f59e0b';
+            case 'hard': return '#ef4444';
+            default: return '#6b7280';
+        }
+    }
+
 
 </script>
 
@@ -99,90 +336,389 @@
         <div class="modal-inner">
             <h2 class="modal-title">Custom Question Sets</h2>
             
-            <!-- Upload Section -->
-            <div class="upload-section">
-                <CustomQuestionsUploader 
-                    onuploadsuccess={handleUploadSuccess}
-                />
-            </div>
-            
-            <!-- Divider -->
-            <div class="divider">
-                <span>Available Question Sets</span>
+            <!-- Tab Navigation -->
+            <div class="tab-nav">
+                <button 
+                    class="tab-btn {activeTab === 'files' ? 'active' : ''}"
+                    onclick={() => activeTab = 'files'}
+                >
+                    <span class="tab-icon">+</span>
+                    Files
+                </button>
+                <button 
+                    class="tab-btn {activeTab === 'gemini' ? 'active' : ''}"
+                    onclick={() => activeTab = 'gemini'}
+                >
+                    <span class="tab-icon">*</span>
+                    Gemini AI
+                    {#if !geminiLoading && geminiAvailable}
+                        <span class="status-dot available"></span>
+                    {:else if !geminiLoading && !geminiAvailable}
+                        <span class="status-dot unavailable"></span>
+                    {/if}
+                </button>
+                <button 
+                    class="tab-btn {activeTab === 'saved' ? 'active' : ''}"
+                    onclick={() => { activeTab = 'saved'; loadSavedSets(); }}
+                >
+                    <span class="tab-icon">@</span>
+                    Saved
+                    {#if savedSets.length > 0}
+                        <span class="saved-count">{savedSets.length}</span>
+                    {/if}
+                </button>
             </div>
 
-            <!-- Filter Buttons -->
-            <div class="filter-section">
-                <button 
-                    class="filter-btn {selectedFilter === 'all' ? 'active' : ''}"
-                    onclick={() => selectedFilter = 'all'}
-                >
-                    All ({customTopics.length})
-                </button>
-                <button 
-                    class="filter-btn {selectedFilter === 'csv' ? 'active' : ''}"
-                    onclick={() => selectedFilter = 'csv'}
-                >
-                    CSV ({customTopics.filter(t => t.type === 'csv').length})
-                </button>
-                <button 
-                    class="filter-btn {selectedFilter === 'xlsx' ? 'active' : ''}"
-                    onclick={() => selectedFilter = 'xlsx'}
-                >
-                    XLSX ({customTopics.filter(t => t.type === 'xlsx').length})
-                </button>
-                <button 
-                    class="filter-btn {selectedFilter === 'json' ? 'active' : ''}"
-                    onclick={() => selectedFilter = 'json'}
-                >
-                    JSON ({customTopics.filter(t => t.type === 'json').length})
-                </button>
-            </div>
-            
-            <!-- Topic List Section -->
-            <div class="topics-section">
-                {#if loading}
-                    <div class="loading-state">
-                        <div class="spinner"></div>
-                        <p>Loading custom question sets...</p>
-                    </div>
-                {:else if error}
-                    <div class="error-state">
-                        <p>{error}</p>
-                        <button onclick={loadCustomTopics} class="retry-button">Retry</button>
-                    </div>
-                {:else if customTopics.length === 0}
-                    <div class="empty-state">
-                        <p>No custom question sets found.</p>
-                        <p class="hint">Upload a file above to get started!</p>
-                    </div>
-                {:else if filteredTopics.length === 0}
-                    <div class="empty-state">
-                        <p>No {selectedFilter.toUpperCase()} files found.</p>
-                        <p class="hint">Try a different filter or upload a file above.</p>
-                    </div>
-                {:else}
-                    <div class="topics-grid">
-                        {#each filteredTopics as topic}
-                            <button
-                                class="topic-card"
-                                onclick={() => selectTopic(topic.name)}
-                            >
-                                <div class="topic-info">
-                                    <div class="topic-name">{topic.name.toUpperCase()}</div>
-                                    <span class="type-badge" style="background-color: {getTypeColor(topic.type)}">
-                                        {getTypeLabel(topic.type)}
+            <!-- FILES TAB -->
+            {#if activeTab === 'files'}
+                <!-- Upload Section -->
+                <div class="upload-section">
+                    <CustomQuestionsUploader 
+                        onuploadsuccess={handleUploadSuccess}
+                    />
+                </div>
+                
+                <!-- Divider -->
+                <div class="divider">
+                    <span>Available Question Sets</span>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="filter-section">
+                    <button 
+                        class="filter-btn {selectedFilter === 'all' ? 'active' : ''}"
+                        onclick={() => selectedFilter = 'all'}
+                    >
+                        All ({customTopics.length})
+                    </button>
+                    <button 
+                        class="filter-btn {selectedFilter === 'csv' ? 'active' : ''}"
+                        onclick={() => selectedFilter = 'csv'}
+                    >
+                        CSV ({customTopics.filter(t => t.type === 'csv').length})
+                    </button>
+                    <button 
+                        class="filter-btn {selectedFilter === 'xlsx' ? 'active' : ''}"
+                        onclick={() => selectedFilter = 'xlsx'}
+                    >
+                        XLSX ({customTopics.filter(t => t.type === 'xlsx').length})
+                    </button>
+                    <button 
+                        class="filter-btn {selectedFilter === 'json' ? 'active' : ''}"
+                        onclick={() => selectedFilter = 'json'}
+                    >
+                        JSON ({customTopics.filter(t => t.type === 'json').length})
+                    </button>
+                </div>
+                
+                <!-- Topic List Section -->
+                <div class="topics-section">
+                    {#if loading}
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Loading custom question sets...</p>
+                        </div>
+                    {:else if error}
+                        <div class="error-state">
+                            <p>{error}</p>
+                            <button onclick={loadCustomTopics} class="retry-button">Retry</button>
+                        </div>
+                    {:else if customTopics.length === 0}
+                        <div class="empty-state">
+                            <p>No custom question sets found.</p>
+                            <p class="hint">Upload a file above to get started!</p>
+                        </div>
+                    {:else if filteredTopics.length === 0}
+                        <div class="empty-state">
+                            <p>No {selectedFilter.toUpperCase()} files found.</p>
+                            <p class="hint">Try a different filter or upload a file above.</p>
+                        </div>
+                    {:else}
+                        <div class="topics-grid">
+                            {#each filteredTopics as topic}
+                                <button
+                                    class="topic-card"
+                                    onclick={() => selectTopic(topic.name)}
+                                >
+                                    <div class="topic-info">
+                                        <div class="topic-name">{topic.name.toUpperCase()}</div>
+                                        <span class="type-badge" style="background-color: {getTypeColor(topic.type)}">
+                                            {getTypeLabel(topic.type)}
+                                        </span>
+                                    </div>
+                                    <div class="topic-action">Select -></div>
+                                </button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+            {/if}
+
+            <!-- GEMINI TAB -->
+            {#if activeTab === 'gemini'}
+                <div class="gemini-section">
+                    {#if geminiLoading}
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Checking Gemini availability...</p>
+                        </div>
+                    {:else if !geminiAvailable}
+                        <div class="gemini-unavailable">
+                            <div class="unavailable-icon">!</div>
+                            <h3>Gemini API Not Configured</h3>
+                            <p>{geminiError}</p>
+                            <div class="setup-instructions">
+                                <p>To enable AI-generated questions:</p>
+                                <ol>
+                                    <li>Get an API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a></li>
+                                    <li>Add <code>GOOGLE_API_KEY=your_key</code> to your <code>.env</code> file</li>
+                                    <li>Restart the backend server</li>
+                                </ol>
+                            </div>
+                            <button onclick={checkGeminiStatus} class="retry-button">Check Again</button>
+                        </div>
+                    {:else}
+                        <!-- Gemini Configuration Form -->
+                        <div class="gemini-form">
+                            <!-- Topic Input -->
+                            <div class="form-group">
+                                <label for="gemini-topic">
+                                    What topic do you want to be quizzed on?
+                                    <span class="char-count {topicCharCount > TOPIC_MAX_LENGTH ? 'over' : ''}">
+                                        {topicCharCount}/{TOPIC_MAX_LENGTH}
                                     </span>
+                                </label>
+                                <input 
+                                    id="gemini-topic"
+                                    type="text"
+                                    bind:value={geminiTopic}
+                                    placeholder="e.g., Machine Learning Basics, World War II, JavaScript Promises..."
+                                    maxlength={TOPIC_MAX_LENGTH}
+                                    class="topic-input"
+                                    disabled={geminiGenerating}
+                                />
+                                <p class="input-hint">Be specific! The AI will generate questions based on your topic.</p>
+                            </div>
+                            
+                            <!-- Difficulty Selection -->
+                            <fieldset class="form-group">
+                                <legend>Difficulty Level</legend>
+                                <div class="difficulty-selector">
+                                    <button 
+                                        class="diff-btn {geminiDifficulty === 'easy' ? 'active easy' : ''}"
+                                        onclick={() => geminiDifficulty = 'easy'}
+                                        disabled={geminiGenerating}
+                                    >
+                                        Easy
+                                    </button>
+                                    <button 
+                                        class="diff-btn {geminiDifficulty === 'medium' ? 'active medium' : ''}"
+                                        onclick={() => geminiDifficulty = 'medium'}
+                                        disabled={geminiGenerating}
+                                    >
+                                        Medium
+                                    </button>
+                                    <button 
+                                        class="diff-btn {geminiDifficulty === 'hard' ? 'active hard' : ''}"
+                                        onclick={() => geminiDifficulty = 'hard'}
+                                        disabled={geminiGenerating}
+                                    >
+                                        Hard
+                                    </button>
                                 </div>
-                                <div class="topic-action">Select →</div>
+                            </fieldset>
+                            
+                            <!-- Question Count Slider -->
+                            <div class="form-group">
+                                <label for="question-count">
+                                    Number of Questions: <strong>{geminiQuestionCount}</strong>
+                                </label>
+                                <div class="slider-container">
+                                    <span class="slider-label">5</span>
+                                    <input 
+                                        id="question-count"
+                                        type="range"
+                                        min="5"
+                                        max="10"
+                                        bind:value={geminiQuestionCount}
+                                        class="question-slider"
+                                        disabled={geminiGenerating}
+                                    />
+                                    <span class="slider-label">10</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Generate Button -->
+                            <button 
+                                class="generate-btn"
+                                onclick={generateGeminiQuestions}
+                                disabled={!topicValid || geminiGenerating}
+                            >
+                                {#if geminiGenerating}
+                                    <div class="btn-spinner"></div>
+                                    Generating Questions...
+                                {:else}
+                                    Generate Questions
+                                {/if}
                             </button>
-                        {/each}
-                    </div>
-                {/if}
-            </div>
+                            
+                            {#if geminiError}
+                                <div class="gemini-error">
+                                    <span>Warning:</span> {geminiError}
+                                </div>
+                            {/if}
+                        </div>
+                        
+                        <!-- Generated Questions Preview -->
+                        {#if geminiGeneratedQuestions.length > 0}
+                            <div class="generated-preview">
+                                <div class="preview-header">
+                                    <h3>Generated {geminiGeneratedQuestions.length} Questions</h3>
+                                    <span class="generation-time">({(geminiGenerationTime / 1000).toFixed(1)}s)</span>
+                                </div>
+                                
+                                <div class="questions-preview">
+                                    {#each geminiGeneratedQuestions.slice(0, 3) as q, i}
+                                        <div class="preview-question">
+                                            <span class="q-number">Q{i + 1}.</span>
+                                            <span class="q-text">{q.questionText.length > 80 ? q.questionText.slice(0, 80) + '...' : q.questionText}</span>
+                                        </div>
+                                    {/each}
+                                    {#if geminiGeneratedQuestions.length > 3}
+                                        <div class="preview-more">
+                                            + {geminiGeneratedQuestions.length - 3} more questions
+                                        </div>
+                                    {/if}
+                                </div>
+                                
+                                <div class="preview-actions">
+                                    <button class="save-set-btn" onclick={openSaveModal}>
+                                        Save Question Set
+                                    </button>
+                                    <button class="use-questions-btn" onclick={useGeminiQuestions}>
+                                        Start Battle
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
+                </div>
+            {/if}
+
+            <!-- SAVED TAB -->
+            {#if activeTab === 'saved'}
+                <div class="saved-section">
+                    {#if savedSetsLoading}
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Loading saved sets...</p>
+                        </div>
+                    {:else if savedSetsError}
+                        <div class="error-state">
+                            <p>{savedSetsError}</p>
+                            <button onclick={loadSavedSets} class="retry-button">Retry</button>
+                        </div>
+                    {:else if savedSets.length === 0}
+                        <div class="empty-state">
+                            <div class="empty-icon">@</div>
+                            <h3>No Saved Question Sets</h3>
+                            <p>Generate questions in the Gemini AI tab and save them here for quick access!</p>
+                            <button class="go-gemini-btn" onclick={() => activeTab = 'gemini'}>
+                                Go to Gemini AI
+                            </button>
+                        </div>
+                    {:else}
+                        <div class="saved-sets-list">
+                            {#each savedSets as set}
+                                <div class="saved-set-card">
+                                    <div class="set-info">
+                                        <div class="set-name">{set.name}</div>
+                                        <div class="set-meta">
+                                            <span class="set-topic">{set.topic}</span>
+                                            <span class="set-difficulty" style="background-color: {getDifficultyColor(set.difficulty)}">
+                                                {set.difficulty}
+                                            </span>
+                                            <span class="set-count">{set.questionCount} Q</span>
+                                            <span class="set-provider">{set.provider}</span>
+                                        </div>
+                                        <div class="set-date">Saved {formatDate(set.createdAt)}</div>
+                                    </div>
+                                    <div class="set-actions">
+                                        <button 
+                                            class="play-set-btn"
+                                            onclick={() => selectSavedSet(set.id)}
+                                            disabled={loadingSavedSetId === set.id}
+                                        >
+                                            {#if loadingSavedSetId === set.id}
+                                                <div class="btn-spinner small"></div>
+                                            {:else}
+                                                Play
+                                            {/if}
+                                        </button>
+                                        <button 
+                                            class="delete-set-btn"
+                                            onclick={() => deleteSavedSet(set.id, set.name)}
+                                            title="Delete this set"
+                                        >
+                                            x
+                                        </button>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+            {/if}
         </div>
     </div>
 </div>
+
+<!-- Save Modal -->
+{#if showSaveModal}
+    <div class="save-modal-overlay" onclick={closeSaveModal} onkeydown={(e) => e.key === 'Escape' && closeSaveModal()} role="button" tabindex="-1">
+        <div class="save-modal" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
+            <h3>Save Question Set</h3>
+            <div class="save-form">
+                <label for="set-name">Name this question set:</label>
+                <input 
+                    id="set-name"
+                    type="text"
+                    bind:value={saveSetName}
+                    placeholder="e.g., World War II - Easy"
+                    maxlength="100"
+                    disabled={saving}
+                />
+                
+                <div class="save-info">
+                    <span>{geminiGeneratedQuestions.length} questions</span>
+                    <span style="color: {getDifficultyColor(geminiDifficulty)}">{geminiDifficulty}</span>
+                </div>
+                
+                {#if saveError}
+                    <div class="save-error">{saveError}</div>
+                {/if}
+                
+                <div class="save-buttons">
+                    <button class="cancel-btn" onclick={closeSaveModal} disabled={saving}>
+                        Cancel
+                    </button>
+                    <button 
+                        class="confirm-save-btn" 
+                        onclick={saveQuestionSet}
+                        disabled={!saveSetName.trim() || saving}
+                    >
+                        {#if saving}
+                            <div class="btn-spinner small"></div>
+                            Saving...
+                        {:else}
+                            Save
+                        {/if}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <style>
     .modal-overlay {
@@ -210,7 +746,7 @@
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         border: 4px solid #4a5568;
         border-radius: 16px;
-        max-width: 600px;
+        max-width: 650px;
         width: 90%;
         max-height: 85vh;
         overflow-y: auto;
@@ -463,6 +999,769 @@
         background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         transform: translateY(-1px);
         box-shadow: 0 6px 12px rgba(251, 191, 36, 0.4);
+    }
+
+    /* Tab Navigation */
+    .tab-nav {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.5rem;
+        border-radius: 12px;
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        color: #9ca3af;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #d1d5db;
+    }
+
+    .tab-btn.active {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border-color: #a5b4fc;
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .tab-icon {
+        font-size: 1.1rem;
+    }
+
+    .saved-count {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.75rem;
+        min-width: 1.2rem;
+        text-align: center;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-left: 0.25rem;
+    }
+
+    .status-dot.available {
+        background: #10b981;
+        box-shadow: 0 0 6px #10b981;
+    }
+
+    .status-dot.unavailable {
+        background: #ef4444;
+    }
+
+    /* Gemini Tab Styles */
+    .gemini-section {
+        min-height: 300px;
+    }
+
+    .gemini-unavailable {
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .unavailable-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #fbbf24;
+    }
+
+    .gemini-unavailable h3 {
+        color: #fbbf24;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+    }
+
+    .gemini-unavailable > p {
+        color: #9ca3af;
+        margin-bottom: 1.5rem;
+    }
+
+    .setup-instructions {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #4b5563;
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: left;
+        margin-bottom: 1.5rem;
+    }
+
+    .setup-instructions p {
+        color: #d1d5db;
+        margin: 0 0 0.75rem 0;
+        font-weight: 600;
+    }
+
+    .setup-instructions ol {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: #9ca3af;
+    }
+
+    .setup-instructions li {
+        margin-bottom: 0.5rem;
+    }
+
+    .setup-instructions a {
+        color: #60a5fa;
+        text-decoration: none;
+    }
+
+    .setup-instructions a:hover {
+        text-decoration: underline;
+    }
+
+    .setup-instructions code {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        color: #fbbf24;
+    }
+
+    /* Gemini Form */
+    .gemini-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        color: #d1d5db;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    fieldset.form-group {
+        border: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    fieldset.form-group legend {
+        color: #d1d5db;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .char-count {
+        font-size: 0.75rem;
+        font-weight: 400;
+        color: #6b7280;
+    }
+
+    .char-count.over {
+        color: #ef4444;
+    }
+
+    .topic-input {
+        background: rgba(0, 0, 0, 0.4);
+        border: 2px solid #4b5563;
+        border-radius: 10px;
+        padding: 0.875rem 1rem;
+        color: white;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .topic-input:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+
+    .topic-input::placeholder {
+        color: #6b7280;
+    }
+
+    .topic-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .input-hint {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .difficulty-selector {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .diff-btn {
+        flex: 1;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #4b5563;
+        border-radius: 8px;
+        color: #9ca3af;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .diff-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #6b7280;
+    }
+
+    .diff-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .diff-btn.active.easy {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-color: #34d399;
+        color: white;
+    }
+
+    .diff-btn.active.medium {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border-color: #fbbf24;
+        color: white;
+    }
+
+    .diff-btn.active.hard {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-color: #f87171;
+        color: white;
+    }
+
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .slider-label {
+        color: #6b7280;
+        font-weight: 600;
+        font-size: 0.875rem;
+        min-width: 1.5rem;
+        text-align: center;
+    }
+
+    .question-slider {
+        flex: 1;
+        height: 8px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #4b5563;
+        border-radius: 4px;
+        outline: none;
+    }
+
+    .question-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+        border-radius: 50%;
+        cursor: pointer;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s;
+    }
+
+    .question-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+    }
+
+    .question-slider:disabled {
+        opacity: 0.5;
+    }
+
+    .generate-btn {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+        border: 3px solid #a5b4fc;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        color: white;
+        font-weight: 900;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .generate-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .generate-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    .gemini-error {
+        background: rgba(239, 68, 68, 0.2);
+        border: 2px solid #ef4444;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: #fca5a5;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Generated Preview */
+    .generated-preview {
+        margin-top: 1.5rem;
+        background: rgba(16, 185, 129, 0.1);
+        border: 2px solid #10b981;
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+
+    .preview-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .preview-header h3 {
+        margin: 0;
+        color: #10b981;
+        font-size: 1.1rem;
+    }
+
+    .generation-time {
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+
+    .questions-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .preview-question {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .q-number {
+        color: #10b981;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .q-text {
+        color: #d1d5db;
+        font-size: 0.9rem;
+    }
+
+    .preview-more {
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+
+    .use-questions-btn {
+        width: 100%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: 3px solid #34d399;
+        border-radius: 10px;
+        padding: 0.875rem;
+        color: white;
+        font-weight: 900;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .use-questions-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Preview Actions (Save button in generated preview) */
+    .preview-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .save-set-btn {
+        flex: 1;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .save-set-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .save-set-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Saved Section */
+    .saved-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        min-height: 200px;
+    }
+
+    .saved-sets-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .saved-set-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.2s;
+    }
+
+    .saved-set-card:hover {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+    }
+
+    .set-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        flex: 1;
+    }
+
+    .set-name {
+        font-weight: 600;
+        color: white;
+        font-size: 1rem;
+    }
+
+    .set-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .set-topic {
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: rgba(56, 189, 248, 0.2);
+        color: #38bdf8;
+        text-transform: capitalize;
+    }
+
+    .set-difficulty {
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: white;
+    }
+
+    .set-count {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.8rem;
+    }
+
+    .set-provider {
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: 500;
+        background: rgba(99, 102, 241, 0.2);
+        color: #a5b4fc;
+    }
+
+    .set-date {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.75rem;
+    }
+
+    .set-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .play-set-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.375rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .play-set-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .play-set-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .delete-set-btn {
+        padding: 0.5rem 0.75rem;
+        border: none;
+        border-radius: 0.375rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .delete-set-btn:hover {
+        background: rgba(239, 68, 68, 0.3);
+        border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .go-gemini-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 0.5rem;
+    }
+
+    .go-gemini-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Save Modal Overlay */
+    .save-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        backdrop-filter: blur(4px);
+    }
+
+    .save-modal {
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .save-modal h3 {
+        color: white;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .save-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .save-form label {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .save-form input[type="text"] {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 0.5rem;
+        background: rgba(15, 23, 42, 0.8);
+        color: white;
+        font-size: 1rem;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .save-form input[type="text"]:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .save-form input[type="text"]::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    .save-info {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.375rem;
+    }
+
+    .save-error {
+        color: #ef4444;
+        font-size: 0.85rem;
+        padding: 0.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 0.375rem;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .save-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .cancel-btn,
+    .confirm-save-btn {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .cancel-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .cancel-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+    }
+
+    .confirm-save-btn {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+    }
+
+    .confirm-save-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .confirm-save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-spinner.small {
+        width: 16px;
+        height: 16px;
+        border-width: 2px;
     }
 
 </style>

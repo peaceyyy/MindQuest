@@ -1,0 +1,46 @@
+{
+  "sets" : [ {
+    "id" : "b124ca02-6c10-4ae2-b3bc-011e8691ee47",
+    "name" : "World War I - Hard",
+    "topic" : "World War I",
+    "difficulty" : "hard",
+    "provider" : "gemini",
+    "createdAt" : 1764514675585,
+    "questions" : [ {
+      "questionText" : "Which lesser-known aspect of the Treaty of Brest-Litovsk (1918) contributed most significantly to the subsequent Russian Civil War, beyond merely territorial losses and reparations?",
+      "choices" : [ "The mandated demobilization of Bolshevik-aligned military units, weakening their internal control.", "The recognition of Ukrainian independence under German protection, fueling anti-Bolshevik sentiment.", "The forced adoption of the gold standard by the new Soviet government, destabilizing its nascent economy.", "The clause requiring the return of all German and Austro-Hungarian prisoners of war, many of whom joined White armies." ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_HARD_001",
+      "difficulty" : "Hard",
+      "topic" : "World War I"
+    }, {
+      "questionText" : "The 'War Raw Materials Department' (Kriegsrohstoffabteilung, KRA) established in Germany in 1914, under Walther Rathenau, was a pioneering example of what economic strategy during total war?",
+      "choices" : [ "Laissez-faire market liberalization to stimulate wartime production.", "Centralized state control and allocation of resources to rationalize war economy.", "Decentralized industrial syndicates to manage specific material supply chains.", "International cooperation agreements to secure vital imports from neutral nations." ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_HARD_002",
+      "difficulty" : "Hard",
+      "topic" : "World War I"
+    }, {
+      "questionText" : "Beyond the immediate military objectives, what was the primary strategic motivation behind the British and French commitment to the Salonica Front (1915-1918), despite its high cost and limited direct impact on the Western Front?",
+      "choices" : [ "To secure access to the Romanian oil fields via the Danube River.", "To protect the Suez Canal from a potential Central Powers advance through the Balkans.", "To support Serbia and provide a base for a future offensive against Austria-Hungary.", "To prevent Bulgaria from fully aligning with the Central Powers and threatening Allied shipping in the Aegean." ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_HARD_003",
+      "difficulty" : "Hard",
+      "topic" : "World War I"
+    }, {
+      "questionText" : "The 'July Crisis' of 1914 involved a complex interplay of diplomatic maneuvers. Which specific action by Germany, following Austria-Hungary's ultimatum to Serbia, is most often cited by historians as the critical miscalculation that escalated a regional conflict into a continental war?",
+      "choices" : [ "Issuing the 'blank check' of unconditional support to Austria-Hungary.", "Mobilizing its reserve forces before Russia or France.", "Refusing to participate in a proposed international conference to mediate the dispute.", "Activating the Schlieffen Plan, leading to the invasion of Belgium." ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_HARD_004",
+      "difficulty" : "Hard",
+      "topic" : "World War I"
+    }, {
+      "questionText" : "While many factors contributed to the United States' entry into WWI, which specific German policy, implemented in early 1917, directly violated international law and fundamentally shifted American public and political opinion towards intervention?",
+      "choices" : [ "The Zimmermann Telegram, proposing an alliance with Mexico.", "The unrestricted submarine warfare campaign.", "The shelling of American merchant ships in the Atlantic.", "The deliberate targeting of passenger liners, such as the Lusitania." ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_HARD_005",
+      "difficulty" : "Hard",
+      "topic" : "World War I"
+    } ]
+  } ]
+}

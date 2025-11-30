@@ -64,6 +64,9 @@
 	let eliminatedChoices = $state<number[]>([]);
 	let hintUsedThisQuestion = $state(false); // Track if hint was used for current question
 	
+	// Pending round end (when player needs to see feedback before end screen)
+	let pendingRoundEnd = $state<(() => void) | null>(null);
+	
 	// Timing for critical hits
 	let questionStartTime = $state<number | null>(null);
 	
@@ -94,6 +97,20 @@
 	let playerSprite = $derived(`/sprites/player/player-lv1.png`);
 	// Enemys Sprite paths based on difficulty
 	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
+	
+	// Built-in topics that have dedicated backgrounds
+	const BUILT_IN_TOPICS = ['ai', 'cs', 'philosophy'];
+	
+	// Background image path based on topic
+	// Built-in topics use their dedicated folder, custom topics use 'default'
+	let backgroundFolder = $derived(() => {
+		const normalizedTopic = topic.toLowerCase();
+		return BUILT_IN_TOPICS.includes(normalizedTopic) ? normalizedTopic : 'default';
+	});
+	
+	// For now, we use bg_1. In the future, this can cycle through multiple backgrounds
+	let currentBgIndex = $state(1);
+	let backgroundImage = $derived(`/backgrounds/${backgroundFolder()}/${backgroundFolder()}-bg_${currentBgIndex}.png`);
 	
 	// Accuracy threshold for victory (inverted model)
 	// Easy: 70% (you should know this!)
@@ -241,12 +258,36 @@
 		// Get topic & difficulty from URL params
 		topic = page.url.searchParams.get('topic') || 'ai';
 		difficulty = page.url.searchParams.get('difficulty') || 'easy';
+		const source = page.url.searchParams.get('source');
+		
+		console.log('[Play] Mounted with source:', source, 'topic:', topic, 'difficulty:', difficulty);
+		
+		// Check if this is an inline questions session (from Gemini or saved sets)
+		let inlineQuestions: any[] | null = null;
+		if (source === 'inline' || source === 'gemini') {
+			try {
+				// Try new key first, fall back to old key for compatibility
+				const stored = sessionStorage.getItem('mindquest:inlineQuestions') 
+					|| sessionStorage.getItem('mindquest:geminiQuestions');
+				if (stored) {
+					inlineQuestions = JSON.parse(stored);
+					console.log('[Play] Loaded', inlineQuestions?.length, 'inline questions from sessionStorage');
+					// Clean up both keys
+					sessionStorage.removeItem('mindquest:inlineQuestions');
+					sessionStorage.removeItem('mindquest:geminiQuestions');
+				} else {
+					console.warn('[Play] No inline questions found in sessionStorage!');
+				}
+			} catch (e) {
+				console.error('Failed to load inline questions from sessionStorage:', e);
+			}
+		}
 		
 		// Initialize game flow
-		await initializeGame();
+		await initializeGame(inlineQuestions);
 	});
 	
-	async function initializeGame() {
+	async function initializeGame(inlineQuestions: any[] | null = null) {
 		try {
 			loading = true;
 			error = '';
@@ -269,14 +310,30 @@
 				console.warn('LocalStorage not available:', e);
 			}
 			
-			// 2. Start round
+			// 2. Start round (with optional inline questions from Gemini or saved sets)
+			const startBody: any = { topic, difficulty };
+			if (inlineQuestions && inlineQuestions.length > 0) {
+				startBody.questions = inlineQuestions;
+				console.log(`[Play] Starting round with ${inlineQuestions.length} inline questions`);
+				console.log('[Play] First question sample:', JSON.stringify(inlineQuestions[0]).slice(0, 200));
+			}
+			
 			const roundRes = await fetch(`/api/sessions/${sessionId}/start`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ topic, difficulty })
+				body: JSON.stringify(startBody)
 			});
 			
-			if (!roundRes.ok) throw new Error('Failed to start round');
+			console.log('[Play] Start round response status:', roundRes.status);
+			
+			if (!roundRes.ok) {
+				const errorText = await roundRes.text();
+				console.error('[Play] Start round failed:', errorText);
+				throw new Error('Failed to start round');
+			}
+			
+			const startData = await roundRes.json();
+			console.log('[Play] Start round response:', startData);
 			
 			// 3. Load first question
 			await loadQuestion();
@@ -296,10 +353,13 @@
 			eliminatedChoices = []; // Reset eliminated choices for new question
 			hintUsedThisQuestion = false; // Reset hint usage for new question
 			
+			console.log('[Play] Loading question for session:', sessionId);
 			const res = await fetch(`/api/sessions/${sessionId}/question`);
+			console.log('[Play] Question response status:', res.status);
 			
 			if (res.status === 204) {
 				// Round complete
+				console.log('[Play] Round complete (204 status)');
 				roundComplete = true;
 				await loadFinalStats();
 				// Persist career points
@@ -314,10 +374,13 @@
 			}
 			
 			if (!res.ok) {
+				const errorText = await res.text();
+				console.error('[Play] Failed to load question:', errorText);
 				throw new Error('Failed to load question');
 			}
 			
 			const rawText = await res.text();
+			console.log('[Play] Question response:', rawText.slice(0, 200));
 			currentQuestion = JSON.parse(rawText);
 			
 			// Fetch current hints
@@ -502,46 +565,70 @@
 			
 			// Check if round is complete
 			if (result.roundComplete || playerHP === 0 || enemyHP === 0) {
-				roundComplete = true;
-				
-				// Determine if it's a victory or defeat
+				// Determine if it's a victory or defeat BEFORE setting roundComplete
 				// Victory: Enemy defeated (HP = 0) AND player still alive (HP > 0)
 				// Defeat: Player HP = 0 OR (round complete but enemy still alive)
-				if (enemyHP === 0 && playerHP > 0) {
-					// VICTORY!
-					isVictory = true;
-					// Capture round summary if provided
-					if (result.summary && result.summary !== 'null') {
-						roundSummary = result.summary;
-					}
-					try {
-						const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
-						const updated = prev + (totalPoints || 0);
-						localStorage.setItem('mindquest:careerPoints', String(updated));
-					} catch (e) {
-						console.warn('Failed to persist career points:', e);
-					}
-				} else {
-					// DEFEAT - Player died OR round ended with enemy still alive
-					isVictory = false;
+				const willBeVictory = enemyHP === 0 && playerHP > 0;
+				
+				// If the player got the last question WRONG, delay the end screen
+				// so they can see the correct answer first
+				const shouldDelayEndScreen = !result.correct;
+				
+				// Prepare end state but don't transition yet if we need to show feedback
+				const finalizeRound = () => {
+					roundComplete = true;
 					
-					// Determine defeat reason if not already set
-					if (!defeatReason) {
-						if (playerHP === 0) {
-							defeatReason = 'hp_depleted';
-						} else if (enemyHP > 0 && currentAccuracy < accuracyThreshold()) {
-							defeatReason = 'accuracy_low';
-						} else {
-							defeatReason = 'enemy_survived';
+					if (willBeVictory) {
+						// VICTORY!
+						isVictory = true;
+						// Capture round summary if provided
+						if (result.summary && result.summary !== 'null') {
+							roundSummary = result.summary;
 						}
+						try {
+							const prev = parseInt(localStorage.getItem('mindquest:careerPoints') || '0');
+							const updated = prev + (totalPoints || 0);
+							localStorage.setItem('mindquest:careerPoints', String(updated));
+						} catch (e) {
+							console.warn('Failed to persist career points:', e);
+						}
+					} else {
+						// DEFEAT - Player died OR round ended with enemy still alive
+						isVictory = false;
+						
+						// Determine defeat reason if not already set
+						if (!defeatReason) {
+							if (playerHP === 0) {
+								defeatReason = 'hp_depleted';
+							} else if (enemyHP > 0 && currentAccuracy < accuracyThreshold()) {
+								defeatReason = 'accuracy_low';
+							} else {
+								defeatReason = 'enemy_survived';
+							}
+						}
+						
+						// Capture summary for stats display even on defeat
+						if (result.summary && result.summary !== 'null') {
+							roundSummary = result.summary;
+						}
+						// DO NOT save points on defeat - stats shown for learning purposes only
+						console.log('Defeated - no points awarded. Enemy HP:', enemyHP, 'Player HP:', playerHP, 'Reason:', defeatReason);
 					}
-					
-					// Capture summary for stats display even on defeat
-					if (result.summary && result.summary !== 'null') {
-						roundSummary = result.summary;
+				};
+				
+				if (shouldDelayEndScreen) {
+					// Mark that round will end, but let the player see the feedback first
+					// They'll need to click "Continue" to see the end screen
+					// Store the finalize function to be called when they proceed
+					pendingRoundEnd = finalizeRound;
+				} else {
+					// Correct answer on last question or victory - can transition immediately
+					// (though we still give a brief moment for the victory animation)
+					if (willBeVictory) {
+						setTimeout(finalizeRound, 800); // Let victory pose play
+					} else {
+						finalizeRound();
 					}
-					// DO NOT save points on defeat - stats shown for learning purposes only
-					console.log('Defeated - no points awarded. Enemy HP:', enemyHP, 'Player HP:', playerHP, 'Reason:', defeatReason);
 				}
 			}
 			
@@ -553,6 +640,13 @@
 	}
 	
 	async function nextQuestion() {
+		// Check if there's a pending round end (player saw feedback for last wrong answer)
+		if (pendingRoundEnd) {
+			pendingRoundEnd();
+			pendingRoundEnd = null;
+			return;
+		}
+		
 		feedback = null;
 		await loadQuestion();
 	}
@@ -645,6 +739,9 @@
 		hints = 0;
 		maxHints = 0;
 		eliminatedChoices = [];
+		hintUsedThisQuestion = false;
+		pendingRoundEnd = null;
+		currentBgIndex = 1; // Reset background index
 		questionStartTime = null;
 		damagePopups = [];
 		
@@ -744,7 +841,13 @@
 		</div>
 	{:else if currentQuestion}
 		<!-- Battle Scene -->
-		<div class="flex-1 flex flex-col gap-4 md:gap-8 relative" bind:this={battleContainerRef}>
+		<div class="flex-1 flex flex-col gap-4 md:gap-8 relative overflow-hidden rounded-xl" bind:this={battleContainerRef}>
+			<!-- Dynamic Background Layer -->
+			<div 
+				class="battle-background"
+				style="background-image: url('{backgroundImage}');"
+			></div>
+			
 			<!-- Damage Popups Layer -->
 			{#each damagePopups as popup (popup.id)}
 				<DamagePopup 
@@ -895,6 +998,27 @@
 {/if}
 
 <style>
+	/* Battle Background - Dynamic per topic */
+	.battle-background {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		/* Fallback gradient if image not loaded */
+		background-color: #1a1a2e;
+		/* Slight darkening overlay for better sprite visibility */
+		filter: brightness(0.85);
+		transition: background-image 0.3s ease-in-out;
+	}
+	
+	/* Ensure all battle content sits above the background */
+	.battle-background ~ * {
+		position: relative;
+		z-index: 1;
+	}
+	
 	/* Continue Battle button - RPG styled */
 	.continue-button {
 		position: relative;

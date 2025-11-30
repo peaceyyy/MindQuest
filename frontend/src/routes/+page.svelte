@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CustomQuestionsModal from '$lib/components/CustomQuestionsModal.svelte';
+	import { sounds } from '$lib/audio/SoundManager';
 	
 	let topic = $state('ai');
 	let difficulty = $state('easy');
@@ -10,6 +11,7 @@
 	let showCustomModal = $state(false);
 	let devMode = $state(import.meta.env.DEV); // Only show dev tools in dev mode
 	let selectedCustomTopic = $state<string | null>(null); // Track selected custom topic
+	let pendingGeminiQuestions = $state<any[] | null>(null); // Store Gemini questions until game starts
 	
 	// Quick test files available in questions folder
 	const testFiles = [
@@ -45,19 +47,47 @@
 	}
 	
 	function startGame() {
+		playSelect();
+		console.log('[Home] startGame - pendingGeminiQuestions:', pendingGeminiQuestions?.length);
+		
+		// If inline questions are pending (from Gemini or saved sets), store them in sessionStorage for the play page
+		if (pendingGeminiQuestions && pendingGeminiQuestions.length > 0) {
+			sessionStorage.setItem('mindquest:inlineQuestions', JSON.stringify(pendingGeminiQuestions));
+			console.log('[Home] Stored questions in sessionStorage, navigating to play');
+			// Use special marker for inline questions
+			goto(`/play?topic=${encodeURIComponent(selectedCustomTopic || 'Custom')}&difficulty=${difficulty}&source=inline`);
+			return;
+		}
+		
 		// If custom topic is selected, use the actual custom topic name
 		const actualTopic = topic === 'custom' && selectedCustomTopic ? selectedCustomTopic : topic;
+		console.log('[Home] No inline questions, navigating with topic:', actualTopic);
 		goto(`/play?topic=${actualTopic}&difficulty=${difficulty}`);
 	}
 
-	function handleCustomTopicSelect(topicName: string) {
+	function handleCustomTopicSelect(topicName: string, source?: 'file' | 'gemini' | 'saved', geminiQuestions?: any[]) {
+		playSelect();
 		// User selected a custom topic from the modal
 		selectedCustomTopic = topicName;
 		topic = 'custom'; // Mark that custom is selected
+		
+		console.log('[Home] handleCustomTopicSelect:', { topicName, source, questionCount: geminiQuestions?.length });
+		
+		// Both 'gemini' and 'saved' sources pass inline questions
+		if ((source === 'gemini' || source === 'saved') && geminiQuestions && geminiQuestions.length > 0) {
+			// Store questions for when game starts
+			pendingGeminiQuestions = geminiQuestions;
+			console.log('[Home] Stored', geminiQuestions.length, 'pending questions');
+		} else {
+			pendingGeminiQuestions = null;
+			console.log('[Home] No pending questions (source:', source, ')');
+		}
+		
 		showCustomModal = false;
 	}
 
 	async function quickLoadTestFile(filename: string) {
+		playSelect();
 		loading = true;
 		try {
 			const res = await fetch(`http://localhost:7070/api/test/load-file?filename=${encodeURIComponent(filename)}`, {
@@ -109,6 +139,10 @@
 		cs: { name: 'COMPUTER SCIENCE', desc: 'Face the Binary Code Phantom' },
 		philosophy: { name: 'PHILOSOPHY', desc: 'Challenge the Ancient Thinker' }
 	};
+
+	function playSelect() {
+		sounds.play('select');
+	}
 	
 	// Reactive topicInfo that includes custom topic with dynamic description
 	let topicInfo = $derived({
@@ -146,6 +180,7 @@
 							<button
 								class="text-left p-3 border-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 {topic === key ? 'border-cyan-400 bg-cyan-400/20 shadow-lg shadow-cyan-400/50' : 'border-gray-600 bg-gray-800/50 hover:border-gray-400'}"
 								onclick={() => {
+									playSelect();
 									if (key === 'custom') {
 										showCustomModal = true;
 									} else {
@@ -168,19 +203,19 @@
 						<div class="grid grid-cols-3 gap-2">
 							<button
 								class="py-2 px-3 border-4 rounded-lg font-bold uppercase text-sm transition-all transform hover:scale-105 active:scale-95 {difficulty === 'easy' ? 'border-green-400 bg-green-400/20 text-green-300 shadow-lg shadow-green-400/50' : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-gray-400'}"
-								onclick={() => difficulty = 'easy'}
+								onclick={() => { playSelect(); difficulty = 'easy'; }}
 							>
 								Easy
 							</button>
 							<button
 								class="py-2 px-3 border-4 rounded-lg font-bold uppercase text-sm transition-all transform hover:scale-105 active:scale-95 {difficulty === 'medium' ? 'border-yellow-400 bg-yellow-400/20 text-yellow-300 shadow-lg shadow-yellow-400/50' : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-gray-400'}"
-								onclick={() => difficulty = 'medium'}
+								onclick={() => { playSelect(); difficulty = 'medium'; }}
 							>
 								Medium
 							</button>
 							<button
 								class="py-2 px-3 border-4 rounded-lg font-bold uppercase text-sm transition-all transform hover:scale-105 active:scale-95 {difficulty === 'hard' ? 'border-red-400 bg-red-400/20 text-red-300 shadow-lg shadow-red-400/50' : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-gray-400'}"
-								onclick={() => difficulty = 'hard'}
+								onclick={() => { playSelect(); difficulty = 'hard'; }}
 							>
 								Hard
 							</button>

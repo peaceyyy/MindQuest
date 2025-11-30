@@ -4,14 +4,22 @@ import com.mindquest.controller.SessionManager;
 import com.mindquest.model.QuestionBank;
 import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
+import com.mindquest.model.question.EasyQuestion;
+import com.mindquest.model.question.MediumQuestion;
+import com.mindquest.model.question.HardQuestion;
 import com.mindquest.service.GameService;
 import com.mindquest.service.dto.AnswerResult;
 import com.mindquest.loader.TopicScanner;
 import com.mindquest.loader.config.SourceConfig;
+import com.mindquest.loader.factory.QuestionBankFactory;
+import com.mindquest.llm.util.SecretResolver;
 import com.mindquest.service.dto.RoundSummary;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.UploadedFile;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +28,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import javax.net.ssl.HttpsURLConnection;
 
 public class GameServer {
     // Map sessionId -> GameService (which holds Player and SessionManager)
@@ -73,6 +84,17 @@ public class GameServer {
             app.post("/api/test/load-file", GameServer::loadTestFile);
             // Debug: list external topics/files seen by the TopicScanner
             app.get("/api/debug/list-external", GameServer::listExternal);
+
+            // Gemini AI Question Generation
+            app.get("/api/gemini/status", GameServer::getGeminiStatus);
+            app.get("/api/gemini/network-test", GameServer::testGeminiNetwork);
+            app.post("/api/gemini/generate", GameServer::generateGeminiQuestions);
+            
+            // Saved AI Question Sets
+            app.get("/api/saved-sets", GameServer::listSavedSets);
+            app.post("/api/saved-sets", GameServer::saveQuestionSet);
+            app.get("/api/saved-sets/{id}/questions", GameServer::getSavedSetQuestions);
+            app.delete("/api/saved-sets/{id}", GameServer::deleteSavedSet);
 
             // Game flow
             app.post("/api/sessions/{id}/start", GameServer::startRound);
@@ -140,6 +162,35 @@ public class GameServer {
         // Normalize topic and difficulty to match QuestionBank format
         String normalizedTopic = normalizeTopic(req.topic);
         String normalizedDifficulty = normalizeDifficulty(req.difficulty);
+        
+        // Check if inline questions are provided (e.g., from Gemini AI)
+        if (req.questions != null && !req.questions.isEmpty()) {
+            // Convert inline questions to concrete Question subclasses based on difficulty
+            List<Question> inlineQuestions = new ArrayList<>();
+            for (int i = 0; i < req.questions.size(); i++) {
+                InlineQuestion iq = req.questions.get(i);
+                Question q = createQuestionForDifficulty(
+                    "gemini-" + i,
+                    iq.questionText,
+                    iq.choices,
+                    iq.correctIndex,
+                    normalizedDifficulty,
+                    normalizedTopic
+                );
+                inlineQuestions.add(q);
+            }
+            
+            // Start round with inline questions
+            gameService.startNewRoundWithQuestions(normalizedTopic, normalizedDifficulty, inlineQuestions);
+            System.out.println("[GameServer] Started round with " + inlineQuestions.size() + " inline questions for topic: " + normalizedTopic);
+            ctx.json(Map.of(
+                "message", "Round started with AI-generated questions",
+                "topic", normalizedTopic,
+                "difficulty", normalizedDifficulty,
+                "questionCount", inlineQuestions.size()
+            ));
+            return;
+        }
         
         // Check for custom sources
         // We check against the "loader-friendly" filename format (lowercase, underscores)
@@ -594,10 +645,418 @@ public class GameServer {
         }
     }
 
+    /**
+     * GET /api/gemini/status - Check if Gemini API is available
+     */
+    private static void getGeminiStatus(Context ctx) {
+        SecretResolver secrets = new SecretResolver();
+        boolean hasKey = secrets.hasSecret("GOOGLE_API_KEY") || secrets.hasSecret("GEMINI_API_KEY");
+        String maskedKey = "";
+        
+        if (hasKey) {
+            String key = secrets.getGeminiApiKey();
+            if (key != null && key.length() > 8) {
+                maskedKey = key.substring(0, 4) + "..." + key.substring(key.length() - 4);
+            }
+        }
+        
+        ctx.json(Map.of(
+            "available", hasKey,
+            "keyConfigured", hasKey,
+            "maskedKey", maskedKey,
+            "message", hasKey ? "Gemini API is configured" : "No API key found. Set GOOGLE_API_KEY in .env file."
+        ));
+    }
+
+    /**
+     * GET /api/gemini/network-test - Test network connectivity to Google APIs
+     */
+    private static void testGeminiNetwork(Context ctx) {
+        Map<String, Object> results = new HashMap<>();
+        
+        // Test 1: Basic Google connectivity
+        results.put("test1_google", testHttpConnection("https://www.google.com", 5000));
+        
+        // Test 2: Generative AI endpoint (just connectivity, not auth)
+        results.put("test2_generativelanguage", testHttpConnection("https://generativelanguage.googleapis.com", 5000));
+        
+        // Test 3: Check SSL/TLS version
+        results.put("java_version", System.getProperty("java.version"));
+        results.put("java_vendor", System.getProperty("java.vendor"));
+        
+        // Test 4: Try to see which TLS versions are available
+        try {
+            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getDefault();
+            results.put("ssl_protocol", sslContext.getProtocol());
+            results.put("ssl_providers", java.util.Arrays.toString(
+                java.security.Security.getProviders()));
+        } catch (Exception e) {
+            results.put("ssl_error", e.getMessage());
+        }
+        
+        ctx.json(results);
+    }
+    
+    private static Map<String, Object> testHttpConnection(String urlString, int timeoutMs) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("url", urlString);
+        
+        try {
+            long start = System.currentTimeMillis();
+            URL url = new URL(urlString);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setConnectTimeout(timeoutMs);
+            conn.setReadTimeout(timeoutMs);
+            conn.setRequestMethod("GET");
+            
+            int responseCode = conn.getResponseCode();
+            long elapsed = System.currentTimeMillis() - start;
+            
+            result.put("success", true);
+            result.put("responseCode", responseCode);
+            result.put("elapsedMs", elapsed);
+            result.put("cipher", conn.getCipherSuite());
+            
+            conn.disconnect();
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+            
+            // Get root cause
+            Throwable cause = e.getCause();
+            if (cause != null) {
+                result.put("cause", cause.getClass().getSimpleName() + ": " + cause.getMessage());
+            }
+        }
+        
+        return result;
+    }
+
+    /**
+     * POST /api/gemini/generate - Generate questions using Gemini AI
+     * Request body: { topic: string, difficulty: string, count: number }
+     */
+    private static void generateGeminiQuestions(Context ctx) {
+        GeminiGenerateRequest req;
+        try {
+            req = ctx.bodyAsClass(GeminiGenerateRequest.class);
+        } catch (Exception e) {
+            ctx.status(400).json(Map.of("error", "Invalid request format", "message", e.getMessage()));
+            return;
+        }
+        
+        // Validate inputs
+        if (req.topic == null || req.topic.trim().isEmpty()) {
+            ctx.status(400).json(Map.of("error", "Topic is required"));
+            return;
+        }
+        
+        if (req.difficulty == null || req.difficulty.trim().isEmpty()) {
+            ctx.status(400).json(Map.of("error", "Difficulty is required"));
+            return;
+        }
+        
+        // Enforce topic length limit (max 100 chars to prevent prompt injection)
+        String topic = req.topic.trim();
+        if (topic.length() > 100) {
+            topic = topic.substring(0, 100);
+        }
+        
+        // Sanitize topic - remove special characters that could affect prompt
+        topic = topic.replaceAll("[^a-zA-Z0-9\\s\\-]", "");
+        
+        // Normalize difficulty
+        String difficulty = normalizeDifficulty(req.difficulty);
+        
+        // Clamp question count (5-10)
+        int count = req.count;
+        if (count < 5) count = 5;
+        if (count > 10) count = 10;
+        
+        System.out.println("[Gemini] Generating " + count + " questions for topic '" + topic + "' at " + difficulty + " difficulty");
+        
+        try {
+            // Build config with question count as extra param
+            SourceConfig config = new SourceConfig.Builder()
+                .type(SourceConfig.SourceType.GEMINI_API)
+                .topic(topic)
+                .difficulty(difficulty)
+                .addExtraParam("questionCount", String.valueOf(count))
+                .build();
+            
+            // Generate questions
+            long startTime = System.currentTimeMillis();
+            List<Question> questions = QuestionBankFactory.getQuestions(config);
+            long elapsed = System.currentTimeMillis() - startTime;
+            
+            if (questions == null || questions.isEmpty()) {
+                ctx.status(500).json(Map.of(
+                    "error", "No questions generated",
+                    "message", "Gemini returned no valid questions. Try a different topic."
+                ));
+                return;
+            }
+            
+            // Convert questions to JSON-friendly format
+            List<Map<String, Object>> questionList = new ArrayList<>();
+            for (Question q : questions) {
+                Map<String, Object> qMap = new HashMap<>();
+                qMap.put("id", q.getId());
+                qMap.put("questionText", q.getQuestionText());
+                qMap.put("choices", q.getChoices());
+                qMap.put("correctIndex", q.getCorrectIndex());
+                qMap.put("difficulty", q.getDifficulty());
+                qMap.put("topic", q.getTopic());
+                questionList.add(qMap);
+            }
+            
+            System.out.println("[Gemini] Generated " + questions.size() + " questions in " + elapsed + "ms");
+            
+            ctx.json(Map.of(
+                "success", true,
+                "topic", topic,
+                "difficulty", difficulty,
+                "count", questions.size(),
+                "generationTimeMs", elapsed,
+                "questions", questionList
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("[Gemini] Generation failed: " + e.getMessage());
+            e.printStackTrace();
+            ctx.status(500).json(Map.of(
+                "error", "Generation failed",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    // ========== SAVED AI QUESTION SETS ==========
+    
+    private static final String SAVED_SETS_FILE = "data/saved_question_sets.json";
+    private static final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    
+    /**
+     * GET /api/saved-sets - List all saved AI question sets
+     */
+    private static void listSavedSets(Context ctx) {
+        try {
+            Path filePath = Paths.get(SAVED_SETS_FILE);
+            if (!Files.exists(filePath)) {
+                ctx.json(Map.of("sets", new ArrayList<>()));
+                return;
+            }
+            
+            String json = Files.readString(filePath);
+            SavedSetsFile data = objectMapper.readValue(json, SavedSetsFile.class);
+            
+            // Return sets without the full questions array (just metadata)
+            List<Map<String, Object>> setsList = new ArrayList<>();
+            for (SavedQuestionSet set : data.sets) {
+                Map<String, Object> setInfo = new HashMap<>();
+                setInfo.put("id", set.id);
+                setInfo.put("name", set.name);
+                setInfo.put("topic", set.topic);
+                setInfo.put("difficulty", set.difficulty);
+                setInfo.put("questionCount", set.questions.size());
+                setInfo.put("provider", set.provider);
+                setInfo.put("createdAt", set.createdAt);
+                setsList.add(setInfo);
+            }
+            
+            ctx.json(Map.of("sets", setsList));
+            
+        } catch (Exception e) {
+            System.err.println("[SavedSets] Failed to list: " + e.getMessage());
+            ctx.status(500).json(Map.of("error", "Failed to load saved sets"));
+        }
+    }
+    
+    /**
+     * POST /api/saved-sets - Save a new question set
+     * Body: { name: string, topic: string, difficulty: string, provider: string, questions: [...] }
+     */
+    private static void saveQuestionSet(Context ctx) {
+        try {
+            SaveQuestionSetRequest req = ctx.bodyAsClass(SaveQuestionSetRequest.class);
+            
+            if (req.name == null || req.name.trim().isEmpty()) {
+                ctx.status(400).json(Map.of("error", "Name is required"));
+                return;
+            }
+            if (req.questions == null || req.questions.isEmpty()) {
+                ctx.status(400).json(Map.of("error", "Questions array is required"));
+                return;
+            }
+            
+            // Load existing sets
+            Path filePath = Paths.get(SAVED_SETS_FILE);
+            SavedSetsFile data;
+            if (Files.exists(filePath)) {
+                String json = Files.readString(filePath);
+                data = objectMapper.readValue(json, SavedSetsFile.class);
+            } else {
+                data = new SavedSetsFile();
+                data.sets = new ArrayList<>();
+            }
+            
+            // Create new set
+            SavedQuestionSet newSet = new SavedQuestionSet();
+            newSet.id = UUID.randomUUID().toString();
+            newSet.name = req.name.trim();
+            newSet.topic = req.topic;
+            newSet.difficulty = req.difficulty;
+            newSet.provider = req.provider != null ? req.provider : "gemini";
+            newSet.createdAt = System.currentTimeMillis();
+            newSet.questions = req.questions;
+            
+            // Add to list
+            data.sets.add(0, newSet); // Add at beginning (most recent first)
+            
+            // Save to file
+            Files.createDirectories(filePath.getParent());
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), data);
+            
+            System.out.println("[SavedSets] Saved set '" + newSet.name + "' with " + newSet.questions.size() + " questions");
+            
+            ctx.json(Map.of(
+                "success", true,
+                "id", newSet.id,
+                "message", "Question set saved successfully"
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("[SavedSets] Failed to save: " + e.getMessage());
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Failed to save question set: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * DELETE /api/saved-sets/{id} - Delete a saved question set
+     */
+    private static void deleteSavedSet(Context ctx) {
+        String setId = ctx.pathParam("id");
+        
+        try {
+            Path filePath = Paths.get(SAVED_SETS_FILE);
+            if (!Files.exists(filePath)) {
+                ctx.status(404).json(Map.of("error", "No saved sets found"));
+                return;
+            }
+            
+            String json = Files.readString(filePath);
+            SavedSetsFile data = objectMapper.readValue(json, SavedSetsFile.class);
+            
+            // Find and remove the set
+            boolean removed = data.sets.removeIf(set -> set.id.equals(setId));
+            
+            if (!removed) {
+                ctx.status(404).json(Map.of("error", "Set not found"));
+                return;
+            }
+            
+            // Save updated file
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), data);
+            
+            System.out.println("[SavedSets] Deleted set: " + setId);
+            
+            ctx.json(Map.of("success", true, "message", "Question set deleted"));
+            
+        } catch (Exception e) {
+            System.err.println("[SavedSets] Failed to delete: " + e.getMessage());
+            ctx.status(500).json(Map.of("error", "Failed to delete question set"));
+        }
+    }
+    
+    /**
+     * GET /api/saved-sets/{id}/questions - Get questions for a specific saved set
+     * (Used when playing a saved set)
+     */
+    private static void getSavedSetQuestions(Context ctx) {
+        String setId = ctx.pathParam("id");
+        
+        try {
+            Path filePath = Paths.get(SAVED_SETS_FILE);
+            if (!Files.exists(filePath)) {
+                ctx.status(404).json(Map.of("error", "No saved sets found"));
+                return;
+            }
+            
+            String json = Files.readString(filePath);
+            SavedSetsFile data = objectMapper.readValue(json, SavedSetsFile.class);
+            
+            // Find the set
+            SavedQuestionSet found = null;
+            for (SavedQuestionSet set : data.sets) {
+                if (set.id.equals(setId)) {
+                    found = set;
+                    break;
+                }
+            }
+            
+            if (found == null) {
+                ctx.status(404).json(Map.of("error", "Set not found"));
+                return;
+            }
+            
+            ctx.json(Map.of(
+                "id", found.id,
+                "name", found.name,
+                "topic", found.topic,
+                "difficulty", found.difficulty,
+                "questions", found.questions
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("[SavedSets] Failed to get questions: " + e.getMessage());
+            ctx.status(500).json(Map.of("error", "Failed to load questions"));
+        }
+    }
+
+    // DTOs for saved sets
+    public static class SavedSetsFile {
+        public List<SavedQuestionSet> sets;
+    }
+    
+    public static class SavedQuestionSet {
+        public String id;
+        public String name;
+        public String topic;
+        public String difficulty;
+        public String provider;
+        public long createdAt;
+        public List<InlineQuestion> questions;
+    }
+    
+    public static class SaveQuestionSetRequest {
+        public String name;
+        public String topic;
+        public String difficulty;
+        public String provider;
+        public List<InlineQuestion> questions;
+    }
+
     // DTOs
     public static class StartRequest {
         public String topic;
         public String difficulty;
+        public java.util.List<InlineQuestion> questions; // Optional: For Gemini/LLM generated questions
+    }
+    
+    public static class InlineQuestion {
+        public String questionText;
+        public java.util.List<String> choices;
+        public int correctIndex;
+        public String id;
+        public String difficulty;
+        public String topic;
+    }
+
+    public static class GeminiGenerateRequest {
+        public String topic;
+        public String difficulty;
+        public int count = 5;  // Default to 5 questions
     }
 
     public static class AnswerRequest {
@@ -683,5 +1142,31 @@ public class GameServer {
             }
         }
         return result.toString().trim();
+    }
+    
+    /**
+     * Factory method to create the appropriate Question subclass based on difficulty.
+     * Since Question is abstract, we must use EasyQuestion, MediumQuestion, or HardQuestion.
+     */
+    private static Question createQuestionForDifficulty(
+            String id, 
+            String questionText, 
+            List<String> choices, 
+            int correctIndex, 
+            String difficulty,
+            String topic) {
+        
+        String lowerDiff = difficulty.toLowerCase();
+        switch (lowerDiff) {
+            case "easy":
+                return new EasyQuestion(id, questionText, choices, correctIndex, topic);
+            case "medium":
+                return new MediumQuestion(id, questionText, choices, correctIndex, topic);
+            case "hard":
+                return new HardQuestion(id, questionText, choices, correctIndex, topic);
+            default:
+                // Default to Medium if unknown difficulty
+                return new MediumQuestion(id, questionText, choices, correctIndex, topic);
+        }
     }
 }

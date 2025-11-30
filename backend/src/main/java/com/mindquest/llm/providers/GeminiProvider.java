@@ -7,6 +7,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.HttpOptions;
+import com.google.genai.types.HttpRetryOptions;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,13 +70,25 @@ public class GeminiProvider implements LlmProvider {
         }
         
         this.modelName = DEFAULT_MODEL;
-        this.timeoutSeconds = options != null ? options.getTimeoutSeconds() : 30;
+        this.timeoutSeconds = options != null ? options.getTimeoutSeconds() : 60;  // Default 60 seconds
         
         try {
             // Initialize official Gemini client with timeout configuration
-            HttpOptions httpOptions = HttpOptions.builder()
-                .timeout(timeoutSeconds)
+            // NOTE: HttpOptions.timeout() expects MILLISECONDS, not seconds!
+            int timeoutMillis = timeoutSeconds * 1000;
+            
+            // Configure retry options for transient failures (rate limits, timeouts)
+            HttpRetryOptions retryOptions = HttpRetryOptions.builder()
+                .attempts(3)                    // Retry up to 3 times
+                .httpStatusCodes(408, 429, 503) // Retry on timeout, rate limit, service unavailable
                 .build();
+            
+            HttpOptions httpOptions = HttpOptions.builder()
+                .timeout(timeoutMillis)
+                .retryOptions(retryOptions)
+                .build();
+            
+            System.out.println("[GeminiProvider] Initializing with timeout: " + timeoutSeconds + "s (" + timeoutMillis + "ms), retries: 3");
             
             this.client = Client.builder()
                 .apiKey(apiKey)
@@ -164,28 +177,42 @@ public class GeminiProvider implements LlmProvider {
             return new CompletionResult(prompt.getId(), responseText, metadata);
             
         } catch (Exception e) {
-            // Categorize exceptions
+            // Categorize exceptions with detailed diagnostics
             String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null) {
+                rootCause = rootCause.getCause();
+            }
+            String rootMessage = rootCause.getMessage() != null ? rootCause.getMessage() : rootCause.getClass().getSimpleName();
             
-            if (message.contains("401") || message.contains("403") || message.contains("API key")) {
+            // Log detailed error for debugging
+            System.err.println("[GeminiProvider] API call failed:");
+            System.err.println("  Message: " + message);
+            System.err.println("  Root cause: " + rootCause.getClass().getSimpleName() + " - " + rootMessage);
+            System.err.println("  Model: " + modelName);
+            System.err.println("  Prompt length: " + (prompt.getInstruction() != null ? prompt.getInstruction().length() : 0) + " chars");
+            
+            if (message.contains("401") || message.contains("403") || message.contains("API key") || message.contains("PERMISSION_DENIED")) {
                 throw new LlmException(
                     LlmException.Category.AUTH,
                     "gemini",
                     "Authentication failed: " + message,
                     e
                 );
-            } else if (message.contains("429") || message.contains("rate limit")) {
+            } else if (message.contains("429") || message.contains("rate limit") || message.contains("RESOURCE_EXHAUSTED")) {
                 throw new LlmException(
                     LlmException.Category.RATE_LIMIT,
                     "gemini",
                     "Rate limit exceeded: " + message,
                     e
                 );
-            } else if (message.contains("timeout") || message.contains("connection")) {
+            } else if (message.contains("timeout") || message.contains("connection") || 
+                       rootMessage.contains("Canceled") || rootMessage.contains("SocketTimeoutException")) {
+                // "Canceled" IOException typically means the request timed out (callTimeout exceeded)
                 throw new LlmException(
-                    LlmException.Category.NETWORK,
+                    LlmException.Category.TIMEOUT,
                     "gemini",
-                    "Network error: " + message,
+                    "Request timed out or connection error: " + message + " (root: " + rootMessage + ")",
                     e
                 );
             } else {
