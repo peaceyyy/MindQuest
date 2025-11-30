@@ -23,7 +23,7 @@ public class SessionManager {
     // Thread-safe state container
     private final AtomicReference<SessionState> state;
 
-    // Immutable state class
+  
     private static class SessionState {
         final List<Question> currentRoundQuestions;
         final Set<String> usedQuestionIds;
@@ -98,12 +98,7 @@ public class SessionManager {
         });
     }
     
-    /**
-     * Starts a new round with pre-loaded questions (e.g., from Gemini AI or saved sets).
-     * This bypasses the normal question loading from the QuestionBank.
-     * Note: Inline questions are NOT added to usedQuestionIds since they're 
-     * self-contained sets meant to be replayable.
-     */
+  
     public void startNewRoundWithQuestions(String topic, String difficulty, List<Question> questions) {
         // Reset player for round
         player.resetForRound();
@@ -232,11 +227,7 @@ public class SessionManager {
             return Collections.emptyList();
         }
 
-        // We need the current used IDs to filter, but we can't access state inside this method easily without passing it.
-        // However, we can just filter later or pass a snapshot.
-        // Let's pass a snapshot of used IDs to this method? 
-        // Actually, for simplicity, let's just filter against the *current* state at the start of this method.
-        // It's a slight race if usedIds changes, but usedIds only changes when starting a new round, which is what we are doing.
+      
         Set<String> usedIdsSnapshot = state.get().usedQuestionIds;
 
         List<Question> freshQuestions = new ArrayList<>();

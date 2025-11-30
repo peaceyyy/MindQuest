@@ -479,7 +479,7 @@
 			// Track answer history for defeat screen breakdown
 			answerHistory.push({
 				correct: result.correct,
-				questionText: currentQuestion?.text || 'Question',
+				questionText: currentQuestion?.questionText || currentQuestion?.question || 'Question',
 				choices: currentQuestion?.choices || [],
 				correctIndex: result.correctIndex,
 				userAnswerIndex: index

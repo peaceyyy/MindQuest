@@ -7,8 +7,8 @@
         ontopicselect: (topicName: string, source?: 'file' | 'gemini' | 'saved', geminiQuestions?: any[]) => void;
     }>();
 
-    // Tab state
-    let activeTab = $state<'files' | 'gemini' | 'saved'>('files');
+    // Tab state - now only files and gemini
+    let activeTab = $state<'files' | 'gemini'>('files');
 
     // === FILES TAB STATE ===
     type TopicItem = {
@@ -46,12 +46,16 @@
     let savedSetsLoading = $state(false);
     let savedSetsError = $state<string | null>(null);
     let loadingSavedSetId = $state<string | null>(null);
+    let deletingSetId = $state<string | null>(null);
 
     // === SAVE MODAL STATE ===
     let showSaveModal = $state(false);
     let saveSetName = $state('');
     let saving = $state(false);
     let saveError = $state<string | null>(null);
+
+    // === SAVED SETS MODAL STATE ===
+    let showSavedSetsModal = $state(false);
 
     // Topic character limit
     const TOPIC_MAX_LENGTH = 100;
@@ -252,8 +256,8 @@
             await loadSavedSets();
             closeSaveModal();
             
-            // Switch to saved tab to show the new set
-            activeTab = 'saved';
+            // Open the saved sets modal to show the new set
+            showSavedSetsModal = true;
             
         } catch (err: any) {
             console.error('Failed to save question set:', err);
@@ -288,6 +292,7 @@
     async function deleteSavedSet(setId: string, setName: string) {
         if (!confirm(`Delete "${setName}"? This cannot be undone.`)) return;
         
+        deletingSetId = setId;
         try {
             const res = await fetch(`http://localhost:7070/api/saved-sets/${setId}`, {
                 method: 'DELETE'
@@ -304,6 +309,8 @@
         } catch (err: any) {
             console.error('Failed to delete saved set:', err);
             savedSetsError = err.message || 'Failed to delete question set';
+        } finally {
+            deletingSetId = null;
         }
     }
 
@@ -355,16 +362,6 @@
                         <span class="status-dot available"></span>
                     {:else if !geminiLoading && !geminiAvailable}
                         <span class="status-dot unavailable"></span>
-                    {/if}
-                </button>
-                <button 
-                    class="tab-btn {activeTab === 'saved' ? 'active' : ''}"
-                    onclick={() => { activeTab = 'saved'; loadSavedSets(); }}
-                >
-                    <span class="tab-icon">@</span>
-                    Saved
-                    {#if savedSets.length > 0}
-                        <span class="saved-count">{savedSets.length}</span>
                     {/if}
                 </button>
             </div>
@@ -569,6 +566,23 @@
                             {/if}
                         </div>
                         
+                        <!-- Saved AI Question Sets Button -->
+                        <div class="saved-sets-section">
+                            <div class="divider">
+                                <span>Or Play Saved Questions</span>
+                            </div>
+                            <button 
+                                class="view-saved-btn"
+                                onclick={() => { loadSavedSets(); showSavedSetsModal = true; }}
+                            >
+                                <span class="btn-icon">📁</span>
+                                Saved AI Question Sets
+                                {#if savedSets.length > 0}
+                                    <span class="saved-count">{savedSets.length}</span>
+                                {/if}
+                            </button>
+                        </div>
+                        
                         <!-- Generated Questions Preview -->
                         {#if geminiGeneratedQuestions.length > 0}
                             <div class="generated-preview">
@@ -601,71 +615,6 @@
                                 </div>
                             </div>
                         {/if}
-                    {/if}
-                </div>
-            {/if}
-
-            <!-- SAVED TAB -->
-            {#if activeTab === 'saved'}
-                <div class="saved-section">
-                    {#if savedSetsLoading}
-                        <div class="loading-state">
-                            <div class="spinner"></div>
-                            <p>Loading saved sets...</p>
-                        </div>
-                    {:else if savedSetsError}
-                        <div class="error-state">
-                            <p>{savedSetsError}</p>
-                            <button onclick={loadSavedSets} class="retry-button">Retry</button>
-                        </div>
-                    {:else if savedSets.length === 0}
-                        <div class="empty-state">
-                            <div class="empty-icon">@</div>
-                            <h3>No Saved Question Sets</h3>
-                            <p>Generate questions in the Gemini AI tab and save them here for quick access!</p>
-                            <button class="go-gemini-btn" onclick={() => activeTab = 'gemini'}>
-                                Go to Gemini AI
-                            </button>
-                        </div>
-                    {:else}
-                        <div class="saved-sets-list">
-                            {#each savedSets as set}
-                                <div class="saved-set-card">
-                                    <div class="set-info">
-                                        <div class="set-name">{set.name}</div>
-                                        <div class="set-meta">
-                                            <span class="set-topic">{set.topic}</span>
-                                            <span class="set-difficulty" style="background-color: {getDifficultyColor(set.difficulty)}">
-                                                {set.difficulty}
-                                            </span>
-                                            <span class="set-count">{set.questionCount} Q</span>
-                                            <span class="set-provider">{set.provider}</span>
-                                        </div>
-                                        <div class="set-date">Saved {formatDate(set.createdAt)}</div>
-                                    </div>
-                                    <div class="set-actions">
-                                        <button 
-                                            class="play-set-btn"
-                                            onclick={() => selectSavedSet(set.id)}
-                                            disabled={loadingSavedSetId === set.id}
-                                        >
-                                            {#if loadingSavedSetId === set.id}
-                                                <div class="btn-spinner small"></div>
-                                            {:else}
-                                                Play
-                                            {/if}
-                                        </button>
-                                        <button 
-                                            class="delete-set-btn"
-                                            onclick={() => deleteSavedSet(set.id, set.name)}
-                                            title="Delete this set"
-                                        >
-                                            x
-                                        </button>
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
                     {/if}
                 </div>
             {/if}
@@ -715,6 +664,97 @@
                         {/if}
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Nested Saved Sets Modal -->
+{#if showSavedSetsModal}
+    <div 
+        class="saved-sets-modal-overlay" 
+        onclick={() => showSavedSetsModal = false} 
+        onkeydown={(e) => e.key === 'Escape' && (showSavedSetsModal = false)} 
+        role="button" 
+        tabindex="-1"
+    >
+        <div 
+            class="saved-sets-modal" 
+            onclick={(e) => e.stopPropagation()} 
+            onkeydown={() => {}} 
+            role="dialog" 
+            tabindex="-1"
+        >
+            <div class="saved-sets-header">
+                <h3>Saved AI Question Sets</h3>
+                <button class="close-saved-modal-btn" onclick={() => showSavedSetsModal = false}>
+                    Close
+                </button>
+            </div>
+            
+            <div class="saved-sets-content">
+                {#if savedSetsLoading}
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Loading saved sets...</span>
+                    </div>
+                {:else if savedSetsError}
+                    <div class="error-state">
+                        <span>{savedSetsError}</span>
+                        <button class="retry-btn" onclick={loadSavedSets}>Retry</button>
+                    </div>
+                {:else if savedSets.length === 0}
+                    <div class="empty-state">
+                        <span class="empty-icon">📚</span>
+                        <p>No saved question sets yet.</p>
+                        <p class="empty-hint">Generate questions with Gemini AI and save them for later!</p>
+                    </div>
+                {:else}
+                    <div class="saved-sets-list">
+                        {#each savedSets as set (set.id)}
+                            <div class="saved-set-card">
+                                <div class="set-info">
+                                    <span class="set-name">{set.name}</span>
+                                    <div class="set-meta">
+                                        <span class="set-topic">{set.topic}</span>
+                                        <span class="set-difficulty" style="background: {getDifficultyColor(set.difficulty)}">
+                                            {set.difficulty}
+                                        </span>
+                                        <span class="set-count">{set.questionCount} questions</span>
+                                        {#if set.provider}
+                                            <span class="set-provider">{set.provider}</span>
+                                        {/if}
+                                        <span class="set-date">{formatDate(set.createdAt)}</span>
+                                    </div>
+                                </div>
+                                <div class="set-actions">
+                                    <button 
+                                        class="play-set-btn" 
+                                        onclick={() => selectSavedSet(set.id)}
+                                        disabled={loadingSavedSetId === set.id}
+                                    >
+                                        {#if loadingSavedSetId === set.id}
+                                            <div class="btn-spinner small"></div>
+                                        {:else}
+                                            Play
+                                        {/if}
+                                    </button>
+                                    <button 
+                                        class="delete-set-btn" 
+                                        onclick={() => deleteSavedSet(set.id, set.name)}
+                                        disabled={deletingSetId === set.id}
+                                    >
+                                        {#if deletingSetId === set.id}
+                                            ...
+                                        {:else}
+                                            Delete
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
             </div>
         </div>
     </div>
@@ -1473,12 +1513,34 @@
         cursor: not-allowed;
     }
 
-    /* Saved Section */
-    .saved-section {
+    /* Saved Sets Section in Gemini Tab */
+    .saved-sets-section {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+    }
+
+    .saved-sets-section .divider {
         display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        min-height: 200px;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 1rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.85rem;
+    }
+
+    .saved-sets-section .divider::before,
+    .saved-sets-section .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .saved-sets-section .divider span {
+        padding: 0 1rem;
+    }
+
+    .btn-icon {
+        font-size: 1.1rem;
     }
 
     .saved-sets-list {
@@ -1610,23 +1672,6 @@
     .delete-set-btn:hover {
         background: rgba(239, 68, 68, 0.3);
         border-color: rgba(239, 68, 68, 0.5);
-    }
-
-    .go-gemini-btn {
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 0.5rem;
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        margin-top: 0.5rem;
-    }
-
-    .go-gemini-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
     }
 
     /* Save Modal Overlay */
@@ -1762,6 +1807,120 @@
         width: 16px;
         height: 16px;
         border-width: 2px;
+    }
+
+    /* Nested Saved Sets Modal */
+    .saved-sets-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        backdrop-filter: blur(6px);
+    }
+
+    .saved-sets-modal {
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        width: 95%;
+        max-width: 600px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .saved-sets-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .saved-sets-header h3 {
+        color: white;
+        font-size: 1.25rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .close-saved-modal-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .close-saved-modal-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+    }
+
+    .saved-sets-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .saved-sets-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .saved-sets-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    .saved-sets-content::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.4);
+        border-radius: 3px;
+    }
+
+    .saved-sets-content::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.6);
+    }
+
+    .view-saved-btn {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 0.5rem;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
+        color: white;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .view-saved-btn:hover {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(99, 102, 241, 0.2) 100%);
+        border-color: rgba(139, 92, 246, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .view-saved-btn .saved-count {
+        background: rgba(139, 92, 246, 0.3);
+        padding: 0.2rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
     }
 
 </style>
