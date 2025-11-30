@@ -51,12 +51,15 @@
 	/* ===== Wrapper - Full viewport background ===== */
 	.device-wrapper {
 		min-height: 100vh;
+		max-height: 100vh;
+		height: 100vh;
 		width: 100%;
 		display: flex;
 		justify-content: center;
-		align-items: flex-start;
-		padding: 20px;
+		align-items: stretch;
+		padding: 12px;
 		box-sizing: border-box;
+		overflow: hidden;
 		/* Dark background visible around the device */
 		background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
 	}
@@ -68,13 +71,15 @@
 			"top    top    top"
 			"left   screen right"
 			"bottom bottom bottom";
-		grid-template-columns: 50px 1fr 50px;
-		grid-template-rows: 20px 1fr 20px;
+		/* Fixed column widths: rails are fixed, screen is fixed */
+		grid-template-columns: 50px minmax(0, 800px) 50px;
+		grid-template-rows: 16px 1fr 16px;
 		
-		/* Max width for the whole device including rails */
-		max-width: 1000px;
-		width: 100%;
-		min-height: calc(100vh - 40px);
+		/* Fixed width for the whole device */
+		width: 900px;
+		max-width: calc(100vw - 24px);
+		height: 100%;
+		max-height: calc(100vh - 24px);
 		
 		/* The red plastic shell */
 		background: linear-gradient(180deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
@@ -239,6 +244,14 @@
 		border-radius: 8px;
 		overflow: auto;
 		
+		/* Fixed width for consistent layout - prevents content from causing width shifts */
+		width: 100%;
+		min-width: 0; /* Allow shrinking within grid */
+		
+		/* Flex container to let content fill properly */
+		display: flex;
+		flex-direction: column;
+		
 		/* Inner shadow to look recessed */
 		box-shadow: 
 			inset 0 2px 8px rgba(0, 0, 0, 0.5),
@@ -248,11 +261,25 @@
 		border: 3px solid #111827;
 	}
 	
+	/* Ensure content inside the screen fills it properly and doesn't overflow */
+	.screen-viewport > :global(*) {
+		flex: 1;
+		min-height: 0;
+		min-width: 0;
+		width: 100%;
+		max-width: 100%;
+		overflow: auto;
+	}
+	
 	/* ===== Responsive: Hide frame on small screens ===== */
 	@media (max-width: 700px) {
 		.device-wrapper {
 			padding: 0;
 			background: #1a1a2e;
+			max-height: none;
+			height: auto;
+			min-height: 100vh;
+			overflow: auto;
 		}
 		
 		.device-shell {
@@ -261,6 +288,8 @@
 			box-shadow: none;
 			border-radius: 0;
 			max-width: 100%;
+			max-height: none;
+			height: auto;
 		}
 		
 		.bezel-top,
@@ -274,6 +303,11 @@
 			border: none;
 			box-shadow: none;
 			min-height: 100vh;
+			overflow: visible;
+		}
+		
+		.screen-viewport > :global(*) {
+			overflow: visible;
 		}
 	}
 </style>

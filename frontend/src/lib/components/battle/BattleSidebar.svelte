@@ -12,6 +12,8 @@
 		onUseHint: () => void;
 		hintDisabled?: boolean;
 		hintUsedThisQuestion?: boolean;
+		// Flee props
+		onFlee?: () => void;
 	}
 	
 	let { 
@@ -24,7 +26,8 @@
 		maxHints,
 		onUseHint,
 		hintDisabled = false,
-		hintUsedThisQuestion = false
+		hintUsedThisQuestion = false,
+		onFlee
 	}: Props = $props();
 	
 	// Hint drawer state
@@ -155,6 +158,14 @@
 			</div>
 		</div>
 	</div>
+	
+	<!-- FLEE BUTTON -->
+	{#if onFlee}
+		<button class="flee-btn" onclick={onFlee}>
+			<span class="flee-icon">🚪</span>
+			<span class="flee-text">FLEE</span>
+		</button>
+	{/if}
 </div>
 
 <style>
@@ -502,5 +513,47 @@
 	.stat-divider {
 		color: #475569;
 		font-size: 0.75rem;
+	}
+	
+	/* ========== FLEE BUTTON ========== */
+	.flee-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		width: 100%;
+		padding: 8px 10px;
+		background: linear-gradient(180deg, 
+			rgba(127, 29, 29, 0.6) 0%, 
+			rgba(153, 27, 27, 0.8) 100%
+		);
+		border: 2px solid rgba(239, 68, 68, 0.4);
+		border-radius: 10px;
+		cursor: pointer;
+		transition: all 0.2s;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+	
+	.flee-btn:hover {
+		background: linear-gradient(180deg, 
+			rgba(153, 27, 27, 0.8) 0%, 
+			rgba(185, 28, 28, 0.9) 100%
+		);
+		border-color: rgba(239, 68, 68, 0.6);
+		box-shadow: 
+			0 4px 12px rgba(0, 0, 0, 0.3),
+			0 0 15px rgba(239, 68, 68, 0.2);
+	}
+	
+	.flee-icon {
+		font-size: 0.875rem;
+	}
+	
+	.flee-text {
+		font-size: 0.5rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		color: #fca5a5;
+		font-family: 'Press Start 2P', system-ui, monospace;
 	}
 </style>

@@ -750,7 +750,7 @@
 	}
 </script>
 
-<div class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col font-sans">
+<div class="game-container">
 	{#if loading && !currentQuestion}
 		<div class="flex-1 flex items-center justify-center">
 			<div class="text-2xl font-bold animate-pulse text-blue-600">Loading Battle...</div>
@@ -761,82 +761,100 @@
 			<button class="px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600" onclick={backToHome}>Retreat</button>
 		</div>
 	{:else if roundComplete}
-		<div class="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-			{#if isVictory}
-				<h2 class="text-4xl font-bold text-green-600">Victory!</h2>
-				<p class="text-gray-600">You defeated the {topic.toUpperCase()} Boss!</p>
-			{:else}
-				<h2 class="text-4xl font-bold text-red-600">Defeated...</h2>
-				<p class="text-gray-600">The {topic.toUpperCase()} Boss was too strong this time.</p>
-				
-				<!-- Defeat Reason Badge -->
-				{#if defeatReason}
-					<div class="bg-red-100 border-2 border-red-400 rounded-lg px-4 py-3 text-red-800 font-semibold">
-						{getDefeatReasonMessage(defeatReason)}
-					</div>
+		<!-- Game Over Screen - RPG Styled -->
+		<div class="game-over-screen">
+			<!-- Title Banner -->
+			<div class="game-over-banner" class:victory={isVictory} class:defeat={!isVictory}>
+				{#if isVictory}
+					<h2 class="game-over-title victory-text">VICTORY!</h2>
+					<p class="game-over-subtitle">You defeated the {topic.toUpperCase()} Boss!</p>
+				{:else}
+					<h2 class="game-over-title defeat-text">DEFEATED...</h2>
+					<p class="game-over-subtitle">The {topic.toUpperCase()} Boss was too strong this time.</p>
 				{/if}
-				
-				<!-- Answer Breakdown Visual -->
-				
+			</div>
+			
+			<!-- Defeat Reason Badge -->
+			{#if !isVictory && defeatReason}
+				<div class="defeat-reason-badge">
+					<span class="defeat-reason-icon">⚠</span>
+					<span class="defeat-reason-text">{getDefeatReasonMessage(defeatReason)}</span>
+				</div>
 			{/if}
 			
+			<!-- Stats Panel -->
 			{#if roundSummary}
-				<!-- Enhanced Statistics Display -->
-				<div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg max-w-md w-full space-y-4">
-					<h3 class="text-2xl font-bold text-gray-800 mb-4">Round Statistics</h3>
+				<div class="stats-panel">
+					<div class="stats-header">
+						<span class="stats-header-icon">📊</span>
+						<h3 class="stats-header-text">ROUND STATISTICS</h3>
+					</div>
 					
-					<div class="grid grid-cols-2 gap-4 text-left">
-						<div class="space-y-1">
-							<p class="text-sm text-gray-500 uppercase tracking-wide">Total Questions</p>
-							<p class="text-3xl font-bold text-blue-600">{roundSummary.totalQuestions}</p>
+					<div class="stats-grid">
+						<div class="stat-item">
+							<span class="stat-label">QUESTIONS</span>
+							<span class="stat-value stat-blue">{roundSummary.totalQuestions}</span>
 						</div>
-						<div class="space-y-1">
-							<p class="text-sm text-gray-500 uppercase tracking-wide">Accuracy</p>
-							<p class="text-3xl font-bold text-green-600">{roundSummary.accuracyPercentage.toFixed(1)}%</p>
+						<div class="stat-item">
+							<span class="stat-label">ACCURACY</span>
+							<span class="stat-value" class:stat-green={roundSummary.accuracyPercentage >= 60} class:stat-red={roundSummary.accuracyPercentage < 60}>
+								{roundSummary.accuracyPercentage.toFixed(1)}%
+							</span>
 						</div>
-						<div class="space-y-1">
-							<p class="text-sm text-gray-500 uppercase tracking-wide">Correct</p>
-							<p class="text-3xl font-bold text-emerald-600">{roundSummary.correctAnswers}</p>
+						<div class="stat-item">
+							<span class="stat-label">CORRECT</span>
+							<span class="stat-value stat-green">{roundSummary.correctAnswers}</span>
 						</div>
-						<div class="space-y-1">
-							<p class="text-sm text-gray-500 uppercase tracking-wide">Misses</p>
-							<p class="text-3xl font-bold text-red-600">{roundSummary.incorrectAnswers}</p>
+						<div class="stat-item">
+							<span class="stat-label">MISSES</span>
+							<span class="stat-value stat-red">{roundSummary.incorrectAnswers}</span>
 						</div>
 					</div>
 					
 					{#if roundSummary.averageAnswerTimeMs > 0}
-						<div class="border-t pt-4 mt-4">
-							<p class="text-sm text-gray-500 uppercase tracking-wide mb-1">Average Time</p>
-							<p class="text-2xl font-bold text-purple-600">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</p>
+						<div class="stats-divider"></div>
+						<div class="stat-row">
+							<span class="stat-label">AVG TIME</span>
+							<span class="stat-value stat-purple">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</span>
 						</div>
 					{/if}
 					
-					<div class="border-t pt-4 mt-4">
-						<p class="text-sm text-gray-500 uppercase tracking-wide mb-1">Total Points Earned</p>
-						<p class="text-3xl font-bold text-yellow-600">{totalPoints}</p>
+					<div class="stats-divider"></div>
+					<div class="stat-row stat-highlight">
+						<span class="stat-label">POINTS EARNED</span>
+						<span class="stat-value stat-gold">{totalPoints}</span>
 					</div>
 				</div>
 			{:else}
-				<!-- Fallback to basic stats if summary not available -->
-				<div class="text-2xl space-y-2">
-					<p>Total Points: <span class="font-bold text-blue-600">{totalPoints}</span></p>
-					<p>Questions Answered: <span class="font-bold text-gray-600">{questionsAnswered}</span></p>
+				<!-- Fallback Stats -->
+				<div class="stats-panel">
+					<div class="stat-row">
+						<span class="stat-label">TOTAL POINTS</span>
+						<span class="stat-value stat-blue">{totalPoints}</span>
+					</div>
+					<div class="stat-row">
+						<span class="stat-label">ANSWERED</span>
+						<span class="stat-value stat-gray">{questionsAnswered}</span>
+					</div>
 				</div>
 			{/if}
 			
-			<div class="flex gap-4 flex-wrap justify-center">
-				<!-- Review Answers Button (only on defeat) -->
+			<!-- Action Buttons -->
+			<div class="game-over-actions">
 				{#if !isVictory && answerHistory.length > 0}
-					<button 
-						class="px-8 py-4 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600 shadow-lg transform hover:-translate-y-1 transition-all flex items-center gap-2"
-						onclick={() => showReviewModal = true}
-					>
-						<span class="text-xl">📚</span>
-						Review Answers
+					<button class="action-btn action-btn-review" onclick={() => showReviewModal = true}>
+						<span class="action-btn-icon">📚</span>
+						<span>REVIEW</span>
 					</button>
 				{/if}
-				<button class="px-8 py-4 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={restartRound}>Play Again</button>
-				<button class="px-8 py-4 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-lg transform hover:-translate-y-1 transition-all" onclick={backToHome}>Return to Base</button>
+				<button class="action-btn action-btn-retry" onclick={restartRound}>
+					<span class="action-btn-icon">🔄</span>
+					<span>RETRY</span>
+				</button>
+				<button class="action-btn action-btn-home" onclick={backToHome}>
+					<span class="action-btn-icon">🏠</span>
+					<span>HOME</span>
+				</button>
 			</div>
 		</div>
 	{:else if currentQuestion}
@@ -860,11 +878,7 @@
 				/>
 			{/each}
 			
-		<!-- Header / Stats -->
-		<div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 text-xs md:text-sm opacity-50 hover:opacity-100 transition-opacity z-10">
-			<span></span>
-			<button class="text-red-500 hover:underline" onclick={showFleeDialog}>FLEE</button>
-		</div>
+
 
 		
 
@@ -969,6 +983,7 @@
 					onUseHint={useHint}
 					hintDisabled={!!feedback}
 					hintUsedThisQuestion={hintUsedThisQuestion}
+					onFlee={showFleeDialog}
 				/>
 			</div>
 		</div>
@@ -998,6 +1013,19 @@
 {/if}
 
 <style>
+	/* ===== Fixed Game Container ===== */
+	.game-container {
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		font-family: system-ui, sans-serif;
+		box-sizing: border-box;
+		overflow: auto;
+	}
+	
 	/* Battle Background - Dynamic per topic */
 	.battle-background {
 		position: absolute;
@@ -1108,6 +1136,253 @@
 		0%, 100% { transform: translateX(0); opacity: 0.8; }
 		50% { transform: translateX(3px); opacity: 1; }
 	}
+	
+	/* ===== Game Over Screen - RPG Styled ===== */
+	.game-over-screen {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1.25rem;
+		padding: 1rem;
+		text-align: center;
+		font-family: 'Press Start 2P', system-ui, monospace;
+	}
+	
+	/* Title Banner */
+	.game-over-banner {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	
+	.game-over-title {
+		font-size: 1.75rem;
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		text-shadow: 
+			3px 3px 0 rgba(0, 0, 0, 0.4),
+			0 0 20px currentColor;
+		animation: title-pulse 2s ease-in-out infinite;
+	}
+	
+	.victory-text {
+		color: #22c55e;
+		text-shadow: 
+			3px 3px 0 rgba(0, 0, 0, 0.4),
+			0 0 30px rgba(34, 197, 94, 0.6);
+	}
+	
+	.defeat-text {
+		color: #ef4444;
+		text-shadow: 
+			3px 3px 0 rgba(0, 0, 0, 0.4),
+			0 0 30px rgba(239, 68, 68, 0.6);
+	}
+	
+	@keyframes title-pulse {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.9; transform: scale(1.02); }
+	}
+	
+	.game-over-subtitle {
+		font-size: 0.625rem;
+		color: #94a3b8;
+		letter-spacing: 0.1em;
+	}
+	
+	/* Defeat Reason Badge */
+	.defeat-reason-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.625rem 1rem;
+		background: linear-gradient(180deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%);
+		border: 2px solid #ef4444;
+		border-radius: 8px;
+		box-shadow: 
+			0 0 15px rgba(239, 68, 68, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+	}
+	
+	.defeat-reason-icon {
+		font-size: 1rem;
+		color: #fca5a5;
+	}
+	
+	.defeat-reason-text {
+		font-size: 0.5rem;
+		color: #fca5a5;
+		letter-spacing: 0.05em;
+	}
+	
+	/* Stats Panel */
+	.stats-panel {
+		width: 100%;
+		max-width: 320px;
+		background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+		border: 3px solid #334155;
+		border-radius: 12px;
+		padding: 1rem;
+		box-shadow: 
+			0 8px 24px rgba(0, 0, 0, 0.4),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	}
+	
+	.stats-header {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 2px solid #334155;
+	}
+	
+	.stats-header-icon {
+		font-size: 1rem;
+	}
+	
+	.stats-header-text {
+		font-size: 0.625rem;
+		color: #e2e8f0;
+		letter-spacing: 0.1em;
+	}
+	
+	.stats-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.75rem;
+	}
+	
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.5rem;
+		background: rgba(51, 65, 85, 0.3);
+		border-radius: 8px;
+	}
+	
+	.stat-label {
+		font-size: 0.5rem;
+		color: #64748b;
+		letter-spacing: 0.1em;
+	}
+	
+	.stat-value {
+		font-size: 1.25rem;
+		font-weight: 800;
+	}
+	
+	.stat-blue { color: #3b82f6; }
+	.stat-green { color: #22c55e; }
+	.stat-red { color: #ef4444; }
+	.stat-purple { color: #a855f7; }
+	.stat-gold { color: #eab308; text-shadow: 0 0 10px rgba(234, 179, 8, 0.5); }
+	.stat-gray { color: #94a3b8; }
+	
+	.stats-divider {
+		height: 2px;
+		background: linear-gradient(90deg, transparent 0%, #334155 50%, transparent 100%);
+		margin: 0.75rem 0;
+	}
+	
+	.stat-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.5rem;
+	}
+	
+	.stat-highlight {
+		background: linear-gradient(90deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
+		border-radius: 8px;
+		border: 1px solid rgba(234, 179, 8, 0.3);
+	}
+	
+	/* Action Buttons */
+	.game-over-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		justify-content: center;
+		margin-top: 0.5rem;
+	}
+	
+	.action-btn {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.75rem 1.25rem;
+		border: 3px solid transparent;
+		border-radius: 10px;
+		font-family: 'Press Start 2P', system-ui, monospace;
+		font-size: 0.5rem;
+		color: white;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 
+			0 4px 12px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	}
+	
+	.action-btn:hover {
+		transform: translateY(-3px);
+		box-shadow: 
+			0 6px 20px rgba(0, 0, 0, 0.4),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	
+	.action-btn:active {
+		transform: translateY(1px);
+	}
+	
+	.action-btn-icon {
+		font-size: 1.25rem;
+	}
+	
+	.action-btn-review {
+		background: linear-gradient(180deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%);
+		border-color: #c084fc;
+	}
+	
+	.action-btn-review:hover {
+		box-shadow: 
+			0 6px 20px rgba(168, 85, 247, 0.4),
+			0 0 20px rgba(168, 85, 247, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	
+	.action-btn-retry {
+		background: linear-gradient(180deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+		border-color: #60a5fa;
+	}
+	
+	.action-btn-retry:hover {
+		box-shadow: 
+			0 6px 20px rgba(59, 130, 246, 0.4),
+			0 0 20px rgba(59, 130, 246, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	
+	.action-btn-home {
+		background: linear-gradient(180deg, #64748b 0%, #475569 50%, #334155 100%);
+		border-color: #94a3b8;
+	}
+	
+	.action-btn-home:hover {
+		box-shadow: 
+			0 6px 20px rgba(100, 116, 139, 0.4),
+			0 0 20px rgba(100, 116, 139, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
 </style>
+
+
 
 

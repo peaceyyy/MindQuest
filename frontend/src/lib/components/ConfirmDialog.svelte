@@ -94,22 +94,21 @@
 <style>
 	.dialog-backdrop {
 		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
+		inset: 0;
+		width: 100vw;
+		height: 100vh;
 		background-color: rgba(0, 0, 0, 0.6);
 		backdrop-filter: blur(4px);
-		z-index: 40;
+		z-index: 9998;
 		animation: fadeIn 0.2s ease-out;
 	}
 	
 	.dialog-container {
 		position: fixed;
-		top: 50%;
-		left: 50%;
+		top: 50vh;
+		left: 50vw;
 		transform: translate(-50%, -50%);
-		z-index: 50;
+		z-index: 9999;
 		animation: slideUp 0.3s ease-out;
 		outline: none;
 	}
