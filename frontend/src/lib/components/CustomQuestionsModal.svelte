@@ -7,13 +7,40 @@
         ontopicselect: (topicName: string) => void;
     }>();
 
-    let customTopics = $state<string[]>([]);
+    type TopicItem = {
+        name: string;
+        type: 'csv' | 'xlsx' | 'json';
+    };
+
+    let customTopics = $state<TopicItem[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
+    let selectedFilter = $state<'all' | 'csv' | 'xlsx' | 'json'>('all');
 
     onMount(async () => {
         await loadCustomTopics();
     });
+
+    // Filter computed derived state
+    let filteredTopics = $derived(
+        selectedFilter === 'all' 
+            ? customTopics 
+            : customTopics.filter(t => t.type === selectedFilter)
+    );
+
+    // Helper functions for type display
+    function getTypeLabel(type: 'csv' | 'xlsx' | 'json'): string {
+        return type.toUpperCase();
+    }
+
+    function getTypeColor(type: 'csv' | 'xlsx' | 'json'): string {
+        switch(type) {
+            case 'csv': return '#10b981'; // green
+            case 'xlsx': return '#3b82f6'; // blue
+            case 'json': return '#f59e0b'; // amber
+            default: return '#6b7280'; // gray
+        }
+    }
 
     async function loadCustomTopics() {
         loading = true;
@@ -31,14 +58,15 @@
             const jsonRes = await fetch('http://localhost:7070/api/debug/list-external?type=json');
             const jsonData = await jsonRes.json();
             
-            // Combine all topics
-            const allTopics = [
-                ...(csvData.topics || []),
-                ...(xlsxData.topics || []),
-                ...(jsonData.topics || [])
+            // Build topics with type info
+            const topics: TopicItem[] = [
+                ...(csvData.topics || []).map((name: string) => ({ name, type: 'csv' as const })),
+                ...(xlsxData.topics || []).map((name: string) => ({ name, type: 'xlsx' as const })),
+                ...(jsonData.topics || []).map((name: string) => ({ name, type: 'json' as const }))
             ];
             
-            customTopics = [...new Set(allTopics)].sort(); // Remove duplicates and sort
+            // Sort by name
+            customTopics = topics.sort((a, b) => a.name.localeCompare(b.name));
         } catch (err: any) {
             console.error('Failed to load custom topics:', err);
             error = 'Failed to load custom question sets. Make sure the server is running.';
@@ -59,6 +87,7 @@
         // Reload the list after successful upload
         await loadCustomTopics();
     }
+
 </script>
 
 <!-- Modal Overlay -->
@@ -81,6 +110,34 @@
             <div class="divider">
                 <span>Available Question Sets</span>
             </div>
+
+            <!-- Filter Buttons -->
+            <div class="filter-section">
+                <button 
+                    class="filter-btn {selectedFilter === 'all' ? 'active' : ''}"
+                    onclick={() => selectedFilter = 'all'}
+                >
+                    All ({customTopics.length})
+                </button>
+                <button 
+                    class="filter-btn {selectedFilter === 'csv' ? 'active' : ''}"
+                    onclick={() => selectedFilter = 'csv'}
+                >
+                    CSV ({customTopics.filter(t => t.type === 'csv').length})
+                </button>
+                <button 
+                    class="filter-btn {selectedFilter === 'xlsx' ? 'active' : ''}"
+                    onclick={() => selectedFilter = 'xlsx'}
+                >
+                    XLSX ({customTopics.filter(t => t.type === 'xlsx').length})
+                </button>
+                <button 
+                    class="filter-btn {selectedFilter === 'json' ? 'active' : ''}"
+                    onclick={() => selectedFilter = 'json'}
+                >
+                    JSON ({customTopics.filter(t => t.type === 'json').length})
+                </button>
+            </div>
             
             <!-- Topic List Section -->
             <div class="topics-section">
@@ -99,14 +156,24 @@
                         <p>No custom question sets found.</p>
                         <p class="hint">Upload a file above to get started!</p>
                     </div>
+                {:else if filteredTopics.length === 0}
+                    <div class="empty-state">
+                        <p>No {selectedFilter.toUpperCase()} files found.</p>
+                        <p class="hint">Try a different filter or upload a file above.</p>
+                    </div>
                 {:else}
                     <div class="topics-grid">
-                        {#each customTopics as topicName}
+                        {#each filteredTopics as topic}
                             <button
                                 class="topic-card"
-                                onclick={() => selectTopic(topicName)}
+                                onclick={() => selectTopic(topic.name)}
                             >
-                                <div class="topic-name">{topicName.toUpperCase()}</div>
+                                <div class="topic-info">
+                                    <div class="topic-name">{topic.name.toUpperCase()}</div>
+                                    <span class="type-badge" style="background-color: {getTypeColor(topic.type)}">
+                                        {getTypeLabel(topic.type)}
+                                    </span>
+                                </div>
                                 <div class="topic-action">Select →</div>
                             </button>
                         {/each}
@@ -325,6 +392,13 @@
         transform: translateY(0) scale(0.98);
     }
 
+    .topic-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
     .topic-name {
         font-weight: 900;
         font-size: 1.125rem;
@@ -333,10 +407,62 @@
         letter-spacing: 0.05em;
     }
 
+    .type-badge {
+        font-size: 0.625rem;
+        font-weight: 700;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
     .topic-action {
         font-weight: 700;
         font-size: 0.875rem;
         color: #fef3c7;
         opacity: 0.9;
     }
+
+    .filter-section {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .filter-btn {
+        background: #374151;
+        color: #d1d5db;
+        border: 2px solid #4b5563;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .filter-btn:hover {
+        background: #4b5563;
+        border-color: #6b7280;
+    }
+
+    .filter-btn.active {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border-color: #fbbf24;
+        color: white;
+        box-shadow: 0 4px 8px rgba(251, 191, 36, 0.3);
+    }
+
+    .filter-btn.active:hover {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(251, 191, 36, 0.4);
+    }
+
 </style>
