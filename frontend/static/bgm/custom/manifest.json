@@ -1,0 +1,9 @@
+{
+  "tracks": [
+    "Legend of Zelda (NES) Intro.mp3",
+    "Pokemon FireRedLeafGreen Music- Trainer Battle.mp3",
+    "Pokemon FireRedLeafGreen Music- Wild Pokemon Battle.mp3"
+  ],
+  "generated": "2025-12-01T18:59:00.598Z",
+  "note": "This file is auto-generated. Add MP3 files to bgm/custom/ and run: npm run generate-bgm"
+}

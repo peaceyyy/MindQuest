@@ -12,7 +12,7 @@
 	import DamagePopup from '$lib/components/battle/DamagePopup.svelte';
 	import BattleSidebar from '$lib/components/battle/BattleSidebar.svelte';
 	import ReviewModal from '$lib/components/ReviewModal.svelte';
-	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
+	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash, enemyAttack } from '$lib/animations/battleEffects';
 	import { sounds, bgm } from '$lib/audio/SoundManager';
 	
 	// Game state
@@ -219,16 +219,21 @@
 	
 	// Play attack animation sequence
 	async function playPlayerAttackAnimation(damage: number, isCritical: boolean = false) {
-		// Player lunges forward
-		attackLunge(playerSpriteRef, 'right', 40);
+		// Player lunges forward (more forceful)
+		attackLunge(playerSpriteRef, 'right', isCritical ? 60 : 50);
 		
 		// Short delay, then enemy gets hit
 		await new Promise(r => setTimeout(r, 150));
 		
-		// Enemy flash and knockback
-		flashElement(enemySpriteRef, 'white', 0.1, 2);
-		knockback(enemySpriteRef, 'right', 25);
+		// Enemy flash and knockback (much stronger impact)
+		flashElement(enemySpriteRef, isCritical ? 'yellow' : 'white', 0.08, isCritical ? 3 : 2);
+		knockback(enemySpriteRef, 'right', isCritical ? 50 : 38);
 		hpBarDamageFlash(enemyHpBarRef);
+		
+		// Add extra screen shake for critical hits
+		if (isCritical) {
+			screenShake(battleContainerRef, 8, 0.3);
+		}
 		
 		// Show damage popup on enemy
 		showDamagePopup(enemySpriteRef, damage, isCritical);
@@ -239,12 +244,20 @@
 	
 	// Play damage received animation
 	async function playPlayerDamageAnimation(damage: number) {
-		// Screen shake
-		screenShake(battleContainerRef, 10, 0.4);
+		// Enemy attacks first with topic-specific animation
+		const attackType = getEnemyAttackType();
+		enemyAttack(enemySpriteRef, attackType);
 		
-		// Player flash and knockback
-		flashElement(playerSpriteRef, 'red', 0.12, 3);
-		knockback(playerSpriteRef, 'left', 20);
+		// Short delay to show enemy attack
+		await new Promise(r => setTimeout(r, 220));
+		
+		// Then player takes damage with intense effects
+		// Stronger screen shake
+		screenShake(battleContainerRef, 15, 0.5);
+		
+		// Player flash and knockback (more intense)
+		flashElement(playerSpriteRef, 'red', 0.1, 4);
+		knockback(playerSpriteRef, 'left', 35);
 		hpBarDamageFlash(playerHpBarRef);
 		
 		// Show damage popup on player
@@ -252,6 +265,28 @@
 		
 		// Play damage sound
 		sounds.play('wrong');
+	}
+	
+	// Get enemy attack animation type based on topic
+	function getEnemyAttackType(): 'lunge' | 'pulse' | 'spin' {
+		const topicLower = topic.toLowerCase();
+		
+		// AI: Pulse attack (energy/digital theme)
+		if (topicLower === 'ai') {
+			return 'pulse';
+		}
+		// CS: Lunge attack (direct/systematic)
+		else if (topicLower === 'cs') {
+			return 'lunge';
+		}
+		// Philosophy: Spin attack (contemplative/circular reasoning)
+		else if (topicLower === 'philosophy') {
+			return 'spin';
+		}
+		// Default: lunge for custom topics
+		else {
+			return 'lunge';
+		}
 	}
 	
 	onMount(async () => {

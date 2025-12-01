@@ -11,7 +11,7 @@ import com.mindquest.llm.util.SecretResolver;
  * Configuration is read from:
  * 1. ProviderOptions passed at creation time
  * 2. Environment variables / .env file (via SecretResolver)
- * 3. Defaults (localhost:1234)
+ * 3. Defaults (localhost:11434)
  */
 public class LocalLlmProviderFactory implements LlmProviderFactory {
     

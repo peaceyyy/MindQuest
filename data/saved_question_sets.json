@@ -1,5 +1,48 @@
 {
   "sets" : [ {
+    "id" : "967d2bcd-8e97-489d-a4a9-067da78ae368",
+    "name" : "Machine Learning - Easy",
+    "topic" : "Machine Learning",
+    "difficulty" : "easy",
+    "provider" : "gemini",
+    "createdAt" : 1764613579858,
+    "questions" : [ {
+      "questionText" : "Which of the following is a common task in Machine Learning?",
+      "choices" : [ "Predicting future values", "Writing operating systems", "Designing computer hardware", "Managing financial accounts" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_001",
+      "difficulty" : "Easy",
+      "topic" : "Machine Learning"
+    }, {
+      "questionText" : "What type of learning involves training a model with labeled data?",
+      "choices" : [ "Supervised learning", "Unsupervised learning", "Reinforcement learning", "Active learning" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_002",
+      "difficulty" : "Easy",
+      "topic" : "Machine Learning"
+    }, {
+      "questionText" : "Which of these is a popular programming language for Machine Learning?",
+      "choices" : [ "Python", "HTML", "CSS", "SQL" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_003",
+      "difficulty" : "Easy",
+      "topic" : "Machine Learning"
+    }, {
+      "questionText" : "What is the goal of a classification task in Machine Learning?",
+      "choices" : [ "To categorize data into predefined classes", "To predict a continuous numerical value", "To find hidden patterns in unlabeled data", "To generate new data samples" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_004",
+      "difficulty" : "Easy",
+      "topic" : "Machine Learning"
+    }, {
+      "questionText" : "In Machine Learning, what is 'training data' used for?",
+      "choices" : [ "To teach the model to make predictions or decisions", "To test the model's performance after training", "To visualize the final results of the model", "To store the model's parameters indefinitely" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_005",
+      "difficulty" : "Easy",
+      "topic" : "Machine Learning"
+    } ]
+  }, {
     "id" : "bbf82f5a-dc8f-4d9b-89ea-c1083a184cca",
     "name" : "The Minecraft Movie - Medium",
     "topic" : "The Minecraft Movie",

@@ -39,16 +39,20 @@ const soundDefs: Record<string, { src: string[]; volume?: number }> = {
  * Categories:
  *   - main_menu: Tracks for the main menu (can have multiple for randomization)
  *   - battle_ai, battle_cs, battle_philosophy: Topic-specific battle tracks
- *   - custom: Default tracks for custom loaded questions
+ *   - custom: Dynamically loaded from bgm/custom/manifest.json
+ * 
+ * Note: Custom tracks are loaded at runtime from manifest.json
+ * Users can add MP3 files to bgm/custom/ and update the manifest
  */
 const bgmRegistry: Record<string, string[]> = {
 	// Main menu tracks (currently 1, expandable)
 	main_menu: [
 		'bgm/main_menu_Driftveil.mp3',
+		'bgm/main_menu_fukashigi.mp3',
 	],
 	// Battle tracks per topic (indexed, expandable)
 	battle_ai: [
-		'bgm/bg_1_fukashigi.mp3',
+		
 	],
 	battle_cs: [
 		'bgm/bg_2_N_Battle.mp3',
@@ -56,11 +60,34 @@ const bgmRegistry: Record<string, string[]> = {
 	battle_philosophy: [
 		'bgm/bg_3_Cynthia_Battle.mp3',
 	],
-	// Default tracks for custom questions (expandable)
-	custom: [
-		'bgm/bg_1_fukashigi.mp3', // Reuse existing track as default
-	],
+	// Custom tracks - will be populated dynamically
+	custom: [],
 };
+
+/**
+ * Load custom BGM tracks from manifest.json
+ */
+async function loadCustomTracks(): Promise<void> {
+	try {
+		const response = await fetch('/bgm/custom/manifest.json');
+		if (response.ok) {
+			const manifest = await response.json();
+			if (manifest.tracks && Array.isArray(manifest.tracks)) {
+				bgmRegistry.custom = manifest.tracks.map((filename: string) => 
+					`bgm/custom/${filename}`
+				);
+				console.log(`[BGM] Loaded ${bgmRegistry.custom.length} custom tracks from manifest`);
+			}
+		}
+	} catch (error) {
+		console.warn('[BGM] Failed to load custom tracks manifest, using fallback:', error);
+		// Fallback to a default track if manifest fails
+		bgmRegistry.custom = ['bgm/main_menu_fukashigi.mp3'];
+	}
+}
+
+// Load custom tracks on module initialization
+loadCustomTracks();
 
 // Built-in topics that have dedicated battle music
 const BUILT_IN_TOPICS = ['ai', 'cs', 'philosophy'];
@@ -286,16 +313,21 @@ class BGMManager {
 		// Stop any existing playback completely
 		this.stopInternal(false);
 
-		if (this.muted) return;
-
 		// Set up new category
 		this.currentCategory = category;
 		this.currentTrackIndex = this.getRandomTrackIndex(category);
 		this.isPlaying = true;
 
+		if (this.muted) {
+			console.log(`[BGMManager] Not playing ${category} - muted`);
+			return;
+		}
+
 		// Start playing
 		const tracks = bgmRegistry[category];
 		const src = tracks[this.currentTrackIndex];
+		
+		console.log(`[BGMManager] Playing ${category}: ${src}`);
 		
 		this.currentHowl = this.createHowl(src);
 		this.currentHowl.volume(0);

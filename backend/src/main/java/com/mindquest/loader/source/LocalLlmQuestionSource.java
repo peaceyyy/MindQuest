@@ -25,12 +25,7 @@ import java.util.List;
  * QuestionSource implementation that generates questions via Local LLM (LM Studio).
  * Similar to GeminiQuestionSource but uses the local LLM provider for offline operation.
  * 
- * This enables completely offline question generation using models like:
- * - Llama 3.2, Llama 3.1
- * - Mistral, Mixtral
- * - Phi-3, Phi-4
- * - Any other model loaded in LM Studio
- */
+ *  */
 public class LocalLlmQuestionSource implements QuestionSource {
     
     private static final int DEFAULT_QUESTION_COUNT = 5;

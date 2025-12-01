@@ -206,10 +206,10 @@
 	// Use the /api/llm/* endpoints instead which go through the Java backend
 	async function testLmStudioDirect() {
 		localLlmLoading = true;
-		output = '⏳ Testing LM Studio directly at localhost:1234...\n⚠️ Note: This may fail due to CORS. Use the Java backend endpoints instead.';
+		output = '⏳ Testing LM Studio directly at localhost:11434...\n⚠️ Note: This may fail due to CORS. Use the Java backend endpoints instead.';
 		try {
 			// First test /v1/models
-			const modelsRes = await fetch('http://localhost:1234/v1/models');
+			const modelsRes = await fetch('http://localhost:11434/v1/models');
 			if (!modelsRes.ok) {
 				output = `❌ LM Studio /v1/models failed with status ${modelsRes.status}`;
 				return;
@@ -217,7 +217,7 @@
 			const modelsData = await modelsRes.json();
 			
 			// Now test a simple chat completion
-			const chatRes = await fetch('http://localhost:1234/v1/chat/completions', {
+			const chatRes = await fetch('http://localhost:11434/v1/chat/completions', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -467,7 +467,7 @@
 					disabled={localLlmLoading}
 					class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 rounded text-sm font-medium transition"
 				>
-					Test LM Studio Directly (localhost:1234)
+					Test LM Studio Directly (localhost:11434)
 				</button>
 			</div>
 			
@@ -572,7 +572,7 @@
 				<p class="font-semibold mb-2 text-yellow-400">🧪 Quick Test Flow - Local LLM (LM Studio):</p>
 				<ol class="list-decimal list-inside space-y-1">
 					<li>Start LM Studio and load a model</li>
-					<li>Enable local server: Developer → Start Server (port 1234)</li>
+					<li>Enable local server: Developer → Start Server (port 11434)</li>
 					<li>Click "GET /api/llm/providers" - should show "local" as available</li>
 					<li>Click "GET /api/llm/local/status" - should show "online" with model list</li>
 					<li>Click "POST /api/llm/local/test" - should return a response from your local model</li>

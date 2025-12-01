@@ -5,7 +5,14 @@
 	 * As if looking down at a DS from above - clean and focused on the screen.
 	 */
 	
+	import { bgm } from '$lib/audio/SoundManager';
+	
 	let { children } = $props();
+	let isMuted = $state(false);
+	
+	function toggleMute() {
+		isMuted = bgm.toggleMute();
+	}
 </script>
 
 <div class="device-wrapper">
@@ -14,11 +21,24 @@
 		<!-- Top bezel with speaker grilles and power LED -->
 		<div class="bezel-top">
 			<div class="power-led"></div>
-			<div class="speaker-grille"></div>
+			<div class="speaker-grille">
+				<img src="/sprites/other/dancing_toothless.gif" alt="" />
+			</div>
 			<div class="camera-dot"></div>
-			<div class="speaker-grille"></div>
+			<div class="speaker-grille">
+				<img src="/sprites/other/dancing_toothless.gif" alt="" />
+			</div>
 			<div class="wifi-led"></div>
 		</div>
+		
+		<!-- Music control button (top-right corner) -->
+		<button class="music-button" onclick={toggleMute} title={isMuted ? 'Unmute Music' : 'Mute Music'}>
+			{#if isMuted}
+				🔇
+			{:else}
+				🔊
+			{/if}
+		</button>
 		
 		<!-- THE SCREEN - Content goes here -->
 		<div class="screen-viewport">
@@ -87,18 +107,20 @@
 	}
 	
 	.speaker-grille {
-		width: 50px;
-		height: 6px;
-		background: repeating-linear-gradient(
-			90deg,
-			#1f2937 0px,
-			#1f2937 2px,
-			#991b1b 2px,
-			#991b1b 4px
-		);
-		border-radius: 3px;
-		opacity: 0.7;
+		width: 40px;
+		height: 40px;
+		border-radius: 4px;
+		overflow: hidden;
 		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.speaker-grille img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
 	}
 	
 	.power-led {
@@ -205,6 +227,44 @@
 			0 1px 0 rgba(255, 255, 255, 0.1);
 	}
 	
+	/* ===== Music Control Button ===== */
+	.music-button {
+		position: absolute;
+		top: 12px;
+		right: 16px;
+		width: 32px;
+		height: 32px;
+		background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+		border: 2px solid #4b5563;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 14px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		z-index: 10;
+		box-shadow: 
+			0 2px 4px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+	}
+	
+	.music-button:hover {
+		background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+		border-color: #6b7280;
+		transform: translateY(-1px);
+		box-shadow: 
+			0 3px 6px rgba(0, 0, 0, 0.4),
+			inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	}
+	
+	.music-button:active {
+		transform: translateY(0);
+		box-shadow: 
+			0 1px 2px rgba(0, 0, 0, 0.3),
+			inset 0 1px 2px rgba(0, 0, 0, 0.3);
+	}
+	
 	/* ===== Responsive: Simplify on small screens ===== */
 	@media (max-width: 700px) {
 		.device-wrapper {
@@ -228,6 +288,13 @@
 		.bezel-top,
 		.hinge-edge {
 			display: none;
+		}
+		
+		.music-button {
+			top: 8px;
+			right: 8px;
+			background: rgba(31, 41, 55, 0.9);
+			backdrop-filter: blur(4px);
 		}
 		
 		.screen-viewport {

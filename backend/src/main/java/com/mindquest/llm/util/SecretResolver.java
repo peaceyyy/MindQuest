@@ -196,10 +196,10 @@ public class SecretResolver {
     
     /**
      * Gets the local LLM endpoint.
-     * Default: LM Studio's default port (1234)
+     * Default: LM Studio's default port (1234 -> set to 11434 bcs pwsh being wack)
      */
     public String getLocalLlmEndpoint() {
-        String endpoint = getSecret("LOCAL_LLM_ENDPOINT", "http://localhost:1234/v1");
+        String endpoint = getSecret("LOCAL_LLM_ENDPOINT", "http://localhost:11434/v1");
         System.out.println("[DEBUG] getLocalLlmEndpoint() returning: " + endpoint);
         return endpoint;
     }

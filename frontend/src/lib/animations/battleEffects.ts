@@ -24,17 +24,19 @@ export function screenShake(
 	if (!element) return null;
 
 	const tl = gsap.timeline();
-	const shakes = 6;
+	const shakes = 8; // More shakes for more impact
 	const shakeDuration = duration / shakes;
 
 	for (let i = 0; i < shakes; i++) {
-		const xOffset = (Math.random() - 0.5) * 2 * intensity;
-		const yOffset = (Math.random() - 0.5) * 2 * intensity;
+		// Diminishing intensity for more natural feel
+		const diminish = 1 - (i / shakes) * 0.5;
+		const xOffset = (Math.random() - 0.5) * 2 * intensity * diminish;
+		const yOffset = (Math.random() - 0.5) * 2 * intensity * diminish;
 		tl.to(element, {
 			x: xOffset,
 			y: yOffset,
 			duration: shakeDuration,
-			ease: 'power1.inOut'
+			ease: 'power2.inOut'
 		});
 	}
 
@@ -56,18 +58,28 @@ export function knockback(
 	direction: 'left' | 'right' = 'left',
 	distance: number = 30,
 	duration: number = 0.3
-): gsap.core.Tween | null {
+): gsap.core.Timeline | null {
 	if (!element) return null;
 
 	const xOffset = direction === 'left' ? -distance : distance;
+	const tl = gsap.timeline();
 
-	return gsap.to(element, {
+	// Impact with slight rotation and scale
+	tl.to(element, {
 		x: xOffset,
+		rotation: direction === 'left' ? -8 : 8,
+		scale: 0.95,
 		duration: duration / 2,
-		ease: 'power2.out',
-		yoyo: true,
-		repeat: 1
+		ease: 'power3.out'
+	}).to(element, {
+		x: 0,
+		rotation: 0,
+		scale: 1.0,
+		duration: duration / 2,
+		ease: 'elastic.out(1, 0.4)'
 	});
+
+	return tl;
 }
 
 /**
@@ -207,4 +219,94 @@ export function hpBarDamageFlash(element: HTMLElement | null): gsap.core.Tween |
 			gsap.set(element, { filter: 'none' });
 		}
 	});
+}
+
+/**
+ * Enemy attack lunge - enemy lunges toward player
+ * @param element - The enemy sprite element
+ * @param attackType - Type of attack animation: 'lunge' | 'pulse' | 'spin'
+ */
+export function enemyAttack(
+	element: HTMLElement | null,
+	attackType: 'lunge' | 'pulse' | 'spin' = 'lunge'
+): gsap.core.Timeline | null {
+	if (!element) return null;
+
+	const tl = gsap.timeline();
+
+	switch (attackType) {
+		case 'lunge':
+			// Powerful forward lunge with windup
+			tl.to(element, {
+				x: 15,
+				scale: 1.05,
+				duration: 0.12,
+				ease: 'power2.in'
+			}).to(element, {
+				x: -90,
+				scale: 1.1,
+				filter: 'brightness(1.3)',
+				duration: 0.18,
+				ease: 'power3.out'
+			}).to(element, {
+				x: 0,
+				scale: 1.0,
+				filter: 'none',
+				duration: 0.3,
+				ease: 'elastic.out(1, 0.4)'
+			});
+			break;
+
+		case 'pulse':
+			// Intense pulsing energy attack with glow
+			tl.to(element, {
+				scale: 1.25,
+				filter: 'brightness(1.5) saturate(1.5)',
+				duration: 0.12,
+				ease: 'power2.out'
+			}).to(element, {
+				scale: 0.9,
+				filter: 'brightness(1.8) saturate(2)',
+				duration: 0.08,
+				ease: 'power2.in'
+			}).to(element, {
+				scale: 1.15,
+				filter: 'brightness(1.5)',
+				duration: 0.1,
+				ease: 'power2.out'
+			}).to(element, {
+				scale: 1.0,
+				filter: 'none',
+				duration: 0.2,
+				ease: 'elastic.out(1, 0.3)'
+			});
+			break;
+
+		case 'spin':
+			// Powerful rotation attack with momentum
+			tl.to(element, {
+				rotation: 15,
+				x: 10,
+				scale: 1.05,
+				duration: 0.1,
+				ease: 'power2.in'
+			}).to(element, {
+				rotation: -25,
+				x: -50,
+				scale: 1.12,
+				filter: 'brightness(1.3)',
+				duration: 0.15,
+				ease: 'power3.out'
+			}).to(element, {
+				rotation: 0,
+				x: 0,
+				scale: 1.0,
+				filter: 'none',
+				duration: 0.25,
+				ease: 'back.out(2)'
+			});
+			break;
+	}
+
+	return tl;
 }

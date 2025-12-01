@@ -22,7 +22,7 @@ import java.util.concurrent.Flow;
  * Local LLM provider using OpenAI-compatible API.
  * Compatible with LM Studio, Ollama, and other local inference servers.
  * 
- * Default endpoint: http://localhost:1234/v1
+ * Default endpoint: http://localhost:11434/v1
  * 
  * Key differences from cloud providers:
  * - No API key required (local inference)
@@ -33,7 +33,7 @@ import java.util.concurrent.Flow;
  */
 public class LocalLlmProvider implements LlmProvider {
     
-    private static final String DEFAULT_ENDPOINT = "http://localhost:1234/v1";
+    private static final String DEFAULT_ENDPOINT = "http://localhost:11434/v1";
     private static final String DEFAULT_MODEL = "local-model";
     private static final int DEFAULT_TIMEOUT_SECONDS = 120; // Local models can be slow on CPU
     
@@ -51,7 +51,7 @@ public class LocalLlmProvider implements LlmProvider {
     /**
      * Creates a LocalLlmProvider with specified configuration.
      * 
-     * @param endpoint The base URL of the local LLM server (e.g., "http://localhost:1234/v1")
+     * @param endpoint The base URL of the local LLM server (e.g., "http://localhost:11434/v1")
      * @param model The model identifier (LM Studio ignores this if only one model is loaded)
      * @param options Additional provider options (timeout, headers, etc.)
      */
@@ -91,27 +91,68 @@ public class LocalLlmProvider implements LlmProvider {
             );
         }
         
+        String requestUrl = endpoint + "/chat/completions";
+        System.out.println("[LocalLlmProvider] Sending request to: " + requestUrl);
+        System.out.println("[LocalLlmProvider] Timeout set to: " + timeoutSeconds + " seconds");
+        long startTime = System.currentTimeMillis();
+        
+        // Use legacy HttpURLConnection for better localhost compatibility on Windows
+        java.net.HttpURLConnection conn = null;
         try {
             // Build the OpenAI-compatible request body
             JsonObject requestBody = buildChatCompletionRequest(prompt, false);
+            String jsonBody = gson.toJson(requestBody);
+            System.out.println("[LocalLlmProvider] Request body length: " + jsonBody.length() + " chars");
             
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint + "/chat/completions"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(timeoutSeconds))
-                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(requestBody)))
-                .build();
+            java.net.URL url = new java.net.URL(requestUrl);
+            conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(10000); // 10 second connect timeout
+            conn.setReadTimeout(timeoutSeconds * 1000); // Use configured timeout for read
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
             
-            System.out.println("[LocalLlmProvider] Sending request to: " + endpoint + "/chat/completions");
+            // Write request body
+            System.out.println("[LocalLlmProvider] Sending request body...");
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            System.out.println("[LocalLlmProvider] Request sent, waiting for response...");
             
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int responseCode = conn.getResponseCode();
+            long afterResponseCode = System.currentTimeMillis();
+            System.out.println("[LocalLlmProvider] Got response code: " + responseCode + " (took " + (afterResponseCode - startTime) + "ms)");
             
-            if (response.statusCode() != 200) {
-                throw mapHttpError(response.statusCode(), response.body());
+            if (responseCode != 200) {
+                // Read error response
+                String errorBody = "";
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getErrorStream()))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    errorBody = sb.toString();
+                } catch (Exception ignored) {}
+                throw mapHttpError(responseCode, errorBody);
+            }
+            
+            // Read success response
+            String responseBody;
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                responseBody = sb.toString();
             }
             
             // Parse OpenAI-format response
-            JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
+            JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
             String content = extractMessageContent(jsonResponse);
             
             // Build metadata
@@ -133,7 +174,7 @@ public class LocalLlmProvider implements LlmProvider {
                 }
             }
             
-            System.out.println("[LocalLlmProvider] Received response, content length: " + content.length());
+            System.out.println("[LocalLlmProvider] ✅ Received response, content length: " + content.length());
             
             return new CompletionResult(prompt.getId(), content, metadata);
             
@@ -147,7 +188,7 @@ public class LocalLlmProvider implements LlmProvider {
                 "Ensure LM Studio is running with the server enabled (Developer → Start Server).",
                 e
             );
-        } catch (java.net.http.HttpTimeoutException e) {
+        } catch (java.net.SocketTimeoutException e) {
             throw new LlmException(
                 LlmException.Category.TIMEOUT,
                 "local",
@@ -162,6 +203,10 @@ public class LocalLlmProvider implements LlmProvider {
                 "Local LLM request failed: " + e.getMessage(),
                 e
             );
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
     
@@ -232,36 +277,61 @@ public class LocalLlmProvider implements LlmProvider {
     /**
      * Tests connection by hitting the /v1/models endpoint.
      * This is exactly how VS Code extensions like "Continue" detect LM Studio.
+     * Uses legacy HttpURLConnection for better localhost compatibility.
      */
     @Override
     public boolean testConnection() {
         if (closed) return false;
         
+        String testUrl = endpoint + "/models";
+        System.out.println("[LocalLlmProvider] Testing connection to: " + testUrl);
+        
+        // Try using legacy HttpURLConnection which handles localhost better
+        java.net.HttpURLConnection conn = null;
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint + "/models"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(5))
-                .GET()
-                .build();
+            java.net.URL url = new java.net.URL(testUrl);
+            conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("Content-Type", "application/json");
             
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int responseCode = conn.getResponseCode();
             
-            if (response.statusCode() == 200) {
-                System.out.println("[LocalLlmProvider] Connection test successful");
-                System.out.println("[LocalLlmProvider] Available models: " + response.body());
+            if (responseCode == 200) {
+                // Read response body
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream()))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    System.out.println("[LocalLlmProvider] ✅ Connection test successful!");
+                    System.out.println("[LocalLlmProvider] Available models: " + response.toString());
+                }
                 return true;
             }
             
-            System.out.println("[LocalLlmProvider] Connection test returned status: " + response.statusCode());
+            System.out.println("[LocalLlmProvider] ❌ Connection test returned status: " + responseCode);
             return false;
             
         } catch (java.net.ConnectException e) {
-            System.out.println("[LocalLlmProvider] Connection test failed: Server not running at " + endpoint);
+            System.err.println("[LocalLlmProvider] ❌ Connection refused at " + testUrl);
+            System.err.println("[LocalLlmProvider] Is LM Studio running with server enabled on port 11434?");
+            return false;
+        } catch (java.net.SocketTimeoutException e) {
+            System.err.println("[LocalLlmProvider] ❌ Connection timed out at " + testUrl);
             return false;
         } catch (Exception e) {
-            System.err.println("[LocalLlmProvider] Connection test failed: " + e.getMessage());
+            System.err.println("[LocalLlmProvider] ❌ Connection test exception: " + e.getClass().getName());
+            System.err.println("[LocalLlmProvider] Message: " + e.getMessage());
+            e.printStackTrace();
             return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
     
@@ -272,22 +342,36 @@ public class LocalLlmProvider implements LlmProvider {
      * @return JsonObject containing the models list, or null if unavailable
      */
     public JsonObject getLoadedModels() {
+        String modelsUrl = endpoint + "/models";
+        java.net.HttpURLConnection conn = null;
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint + "/models"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(5))
-                .GET()
-                .build();
+            java.net.URL url = new java.net.URL(modelsUrl);
+            conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("Content-Type", "application/json");
             
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int responseCode = conn.getResponseCode();
             
-            if (response.statusCode() == 200) {
-                return JsonParser.parseString(response.body()).getAsJsonObject();
+            if (responseCode == 200) {
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    return JsonParser.parseString(response.toString()).getAsJsonObject();
+                }
             }
             return null;
         } catch (Exception e) {
             return null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
     
