@@ -1,6 +1,20 @@
-topic,difficulty,questionText,choice0,choice1,choice2,choice3,correctIndex,
-Philosophy,Easy,What is Stoicism?,A philosophy focused on maximizing pleasure,"A philosophy that emphasizes virtue, reason, and enduring hardship without complaint",A school of thought that questions the possibility of knowledge,A theory that all knowledge is based on experience derived from the senses,1,
-Philosophy,Medium,"What is the philosophical principle of ""Occam's Razor""?",The idea that all events are predetermined,The principle that the simplest explanation is usually the right one,The belief that mind and body are separate entities,The concept that moral principles are universal,1,
-Philosophy,Medium,What is Absurdism, as associated with Albert Camus?,"The belief that life is inherently without meaning, but humans should embrace this and live freely",The theory that reality is fundamentally mental or spiritual,The rejection of all moral principles,The idea that only physical matter is real,0
-Philosophy,Hard,"What is John Rawls's ""Veil of Ignorance"" thought experiment designed to explore?",The nature of consciousness,The principles of justice and fairness in a society,The existence of free will,The limits of human knowledge,1,
-Philosophy,Hard,"What is the core idea of Cartesian dualism, proposed by René Descartes?",That the universe is made of a single substance,That ethical truths are relative to the culture,That the mind (or soul) and the body are two distinct and separate substances,That knowledge is impossible to attain,2,
+topic,difficulty,questionText,choice0,choice1,choice2,choice3,correctIndex
+Philosophy,Easy,What is Stoicism?,A philosophy focused on maximizing pleasure,A philosophy that emphasizes virtue reason and enduring hardship without complaint,A school of thought that questions the possibility of knowledge,A theory that all knowledge is based on experience derived from the senses,1
+Philosophy,Easy,Who is considered the father of Western philosophy?,Aristotle,Plato,Socrates,Descartes,2
+Philosophy,Easy,What does epistemology study?,The nature of beauty,The study of knowledge and belief,Moral principles,The nature of existence,1
+Philosophy,Easy,What is ethics primarily concerned with?,Logic and reasoning,Knowledge and truth,Right and wrong conduct,The nature of reality,2
+Philosophy,Easy,Which philosopher wrote The Republic?,Socrates,Aristotle,Plato,Kant,2
+Philosophy,Easy,What is metaphysics the study of?,Language and meaning,The fundamental nature of reality,Human behavior,Political systems,1
+Philosophy,Easy,What does cogito ergo sum mean?,I think therefore I am,Knowledge is power,Life is suffering,God is dead,0
+Philosophy,Easy,Who wrote Meditations on Stoic philosophy?,Seneca,Epictetus,Marcus Aurelius,Zeno,2
+Philosophy,Medium,What is the philosophical principle of Occams Razor?,The idea that all events are predetermined,The principle that the simplest explanation is usually the right one,The belief that mind and body are separate entities,The concept that moral principles are universal,1
+Philosophy,Medium,What is Absurdism as associated with Albert Camus?,The belief that life is inherently without meaning but humans should embrace this and live freely,The theory that reality is fundamentally mental or spiritual,The rejection of all moral principles,The idea that only physical matter is real,0
+Philosophy,Medium,What is Kants categorical imperative?,Act only according to maxims you could will as universal law,The greatest good for the greatest number,Knowledge comes from experience alone,Mind and body are separate substances,0
+Philosophy,Medium,What is utilitarianism primarily focused on?,Individual rights and freedoms,Maximizing overall happiness or utility,Duty and moral rules,Virtue and character,1
+Philosophy,Medium,What is Platos Theory of Forms?,Physical objects are all that exist,There exists a realm of perfect abstract Forms,Knowledge is impossible,All is in constant flux,1
+Philosophy,Medium,What is existentialism concerned with?,Mathematical logic,Individual existence and freedom,Scientific method,Economic systems,1
+Philosophy,Hard,What is John Rawls Veil of Ignorance thought experiment designed to explore?,The nature of consciousness,The principles of justice and fairness in a society,The existence of free will,The limits of human knowledge,1
+Philosophy,Hard,What is the core idea of Cartesian dualism proposed by Rene Descartes?,That the universe is made of a single substance,That ethical truths are relative to the culture,That the mind or soul and the body are two distinct and separate substances,That knowledge is impossible to attain,2
+Philosophy,Hard,What is Hegels dialectical method?,Thesis-antithesis-synthesis,Empirical observation,Mathematical proof,Linguistic analysis,0
+Philosophy,Hard,What is the main focus of phenomenology?,The study of conscious experience,Political power structures,Economic systems,Natural sciences,0
+Philosophy,Hard,What is Nietzsches concept of the Ubermensch?,A superhuman who creates their own values,A political leader,A religious figure,A scientific genius,0

@@ -1,5 +1,105 @@
 {
   "sets" : [ {
+    "id" : "325fca73-4624-409c-92ac-d2ba0341e485",
+    "name" : "Minecraft - Medium",
+    "topic" : "Minecraft",
+    "difficulty" : "medium",
+    "provider" : "gemini",
+    "createdAt" : 1764619059079,
+    "questions" : [ {
+      "questionText" : "Which of these enchantments can only be applied to a pickaxe?",
+      "choices" : [ "Fortune", "Silk Touch", "Efficiency", "Mending" ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_MEDIUM_001",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "To craft a Golden Apple, what material is required in addition to an apple?",
+      "choices" : [ "Gold Ingots", "Gold Nuggets", "Blocks of Gold", "Glinting Melon Slices" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_002",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "Which of these mobs does NOT burn in daylight?",
+      "choices" : [ "Zombie", "Skeleton", "Spider", "Stray" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_003",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "What is the primary ingredient needed to craft a Potion of Night Vision?",
+      "choices" : [ "Golden Carrot", "Nether Wart", "Blaze Powder", "Glowstone Dust" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_004",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "Which biome is characterized by large mushrooms and unique mushroom-related mobs?",
+      "choices" : [ "Jungle", "Dark Forest", "Mushroom Fields", "Swamp" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_005",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "What tool is most efficient for mining Obsidian?",
+      "choices" : [ "Diamond Pickaxe", "Iron Pickaxe", "Netherite Pickaxe", "Stone Pickaxe" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_006",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    }, {
+      "questionText" : "How many Ender Pearls are required to craft an Eye of Ender?",
+      "choices" : [ "One", "Two", "Four", "Eight" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_007",
+      "difficulty" : "Medium",
+      "topic" : "Minecraft"
+    } ]
+  }, {
+    "id" : "7f29e6bc-2d0c-4c9a-811e-70440254958a",
+    "name" : "US Presidents - Medium",
+    "topic" : "US Presidents",
+    "difficulty" : "medium",
+    "provider" : "local",
+    "createdAt" : 1764618621601,
+    "questions" : [ {
+      "questionText" : "Which US President was known for leading the country through the Great Depression and World War II?",
+      "choices" : [ "Franklin D. Roosevelt", "Harry S. Truman", "Dwight D. Eisenhower", "Theodore Roosevelt" ],
+      "correctIndex" : 0,
+      "id" : "LOCAL_MEDIUM_006",
+      "difficulty" : "Medium",
+      "topic" : "US Presidents"
+    }, {
+      "questionText" : "Who was the first US President to resign from office?",
+      "choices" : [ "John F. Kennedy", "Richard Nixon", "Jimmy Carter", "Gerald Ford" ],
+      "correctIndex" : 2,
+      "id" : "LOCAL_MEDIUM_007",
+      "difficulty" : "Medium",
+      "topic" : "US Presidents"
+    }, {
+      "questionText" : "Which US President was a strong advocate for civil rights and the Voting Rights Act of 1964?",
+      "choices" : [ "John F. Kennedy", "Lyndon B. Johnson", "Harry S. Truman", "Franklin D. Roosevelt" ],
+      "correctIndex" : 1,
+      "id" : "LOCAL_MEDIUM_008",
+      "difficulty" : "Medium",
+      "topic" : "US Presidents"
+    }, {
+      "questionText" : "Who was the US President during the September 11 attacks?",
+      "choices" : [ "George W. Bush", "Bill Clinton", "Barack Obama", "Donald Trump" ],
+      "correctIndex" : 0,
+      "id" : "LOCAL_MEDIUM_009",
+      "difficulty" : "Medium",
+      "topic" : "US Presidents"
+    }, {
+      "questionText" : "Which US President was known for his 'Monroe Doctrine' and the annexation of Hawaii?",
+      "choices" : [ "James K. Polk", "James Buchanan", "Theodore Roosevelt", "Franklin D. Roosevelt" ],
+      "correctIndex" : 0,
+      "id" : "LOCAL_MEDIUM_010",
+      "difficulty" : "Medium",
+      "topic" : "US Presidents"
+    } ]
+  }, {
     "id" : "967d2bcd-8e97-489d-a4a9-067da78ae368",
     "name" : "Machine Learning - Easy",
     "topic" : "Machine Learning",

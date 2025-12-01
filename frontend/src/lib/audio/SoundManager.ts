@@ -16,7 +16,8 @@
 import { Howl } from 'howler';
 
 // Uniform volume level for all BGM (normalized)
-const BGM_VOLUME = 0.3;
+// Lowered to 0.15 so SFX (hit, damage, etc.) can be heard clearly
+const BGM_VOLUME = 0.15;
 
 // Gap between loops in milliseconds (10 seconds)
 const LOOP_GAP_MS = 10000;
@@ -31,6 +32,7 @@ const soundDefs: Record<string, { src: string[]; volume?: number }> = {
 	select: { src: ['sfx/select.mp3'], volume: 0.3 },
 	correct: { src: ['sfx/correct.mp3'], volume: 0.5 },
 	wrong: { src: ['sfx/wrong.mp3'], volume: 0.5 },
+	encounter: { src: ['sfx/select.mp3'], volume: 0.5 }, // Reuse select for now
 };
 
 /**
@@ -52,7 +54,7 @@ const bgmRegistry: Record<string, string[]> = {
 	],
 	// Battle tracks per topic (indexed, expandable)
 	battle_ai: [
-		
+		'bgm/main_menu_fukashigi.mp3',
 	],
 	battle_cs: [
 		'bgm/bg_2_N_Battle.mp3',
@@ -60,14 +62,23 @@ const bgmRegistry: Record<string, string[]> = {
 	battle_philosophy: [
 		'bgm/bg_3_Cynthia_Battle.mp3',
 	],
-	// Custom tracks - will be populated dynamically
-	custom: [],
+	// Custom tracks - will be populated dynamically from manifest
+	// Fallback included in case manifest hasn't loaded yet
+	custom: [
+		'bgm/main_menu_fukashigi.mp3',
+	],
 };
 
 /**
  * Load custom BGM tracks from manifest.json
+ * Only runs in browser (not during SSR)
  */
 async function loadCustomTracks(): Promise<void> {
+	// Skip during SSR - audio only works in browser
+	if (typeof window === 'undefined') {
+		return;
+	}
+	
 	try {
 		const response = await fetch('/bgm/custom/manifest.json');
 		if (response.ok) {
@@ -310,6 +321,13 @@ class BGMManager {
 			return;
 		}
 
+		// Check if category has tracks
+		const tracks = bgmRegistry[category];
+		if (!tracks || tracks.length === 0) {
+			console.warn(`[BGMManager] No tracks in category: ${category}`);
+			return;
+		}
+
 		// Stop any existing playback completely
 		this.stopInternal(false);
 
@@ -324,7 +342,6 @@ class BGMManager {
 		}
 
 		// Start playing
-		const tracks = bgmRegistry[category];
 		const src = tracks[this.currentTrackIndex];
 		
 		console.log(`[BGMManager] Playing ${category}: ${src}`);

@@ -73,6 +73,10 @@
 	// Dialog state
 	let showFleeConfirm = $state(false);
 	let fleeLoading = $state(false);
+	
+	// Battle intro sequence state
+	let showBattleIntro = $state(false);
+	let introPhase = $state(0); // 0: grass/encounter, 1: enemy appears, 2: ready to fight
 
 	
 	
@@ -95,11 +99,17 @@
 	let popupIdCounter = $state(0);
 	
 	let playerSprite = $derived(`/sprites/player/player-lv1.png`);
-	// Enemys Sprite paths based on difficulty
-	let enemySprite = $derived(`/sprites/enemies/${topic}/${topic}-lv${getDifficultyLevel(difficulty)}.png`);
 	
-	// Built-in topics that have dedicated backgrounds
+	// Built-in topics that have dedicated sprites and backgrounds
 	const BUILT_IN_TOPICS = ['ai', 'cs', 'philosophy'];
+	
+	// Enemy sprite path - built-in topics use their folder, custom topics use 'default'
+	let enemySprite = $derived(() => {
+		const normalizedTopic = topic.toLowerCase();
+		const folder = BUILT_IN_TOPICS.includes(normalizedTopic) ? normalizedTopic : 'default';
+		const prefix = BUILT_IN_TOPICS.includes(normalizedTopic) ? normalizedTopic : 'default';
+		return `/sprites/enemies/${folder}/${prefix}-lv${getDifficultyLevel(difficulty)}.png`;
+	});
 	
 	// Background image path based on topic
 	// Built-in topics use their dedicated folder, custom topics use 'default'
@@ -136,19 +146,18 @@
 		}
 	});
 	
-	// Play victory/defeat sound when round completes
+	// Stop BGM and play victory/defeat sound when round completes
 	$effect(() => {
 		if (roundComplete) {
+			// Stop background music immediately so game over sounds are clear
+			bgm.stop();
+			
 			if (isVictory) {
 				// Victory - play celebration sound
 				sounds.play('victory');
 			} else {
-				// Defeat - play defeat sound (only if not already played)
-				if (playerHP > 0) {
-					// Player has HP but still lost (enemy survived)
-					sounds.play('defeat');
-				}
-				// If playerHP === 0, defeat sound already played in handleAnswer
+				// Defeat - play defeat sound when game over screen shows
+				sounds.play('defeat');
 			}
 		}
 	});
@@ -162,29 +171,45 @@
 		}
 	}
 	
+	// Get display-friendly topic name
+	function getTopicDisplayName(t: string): string {
+		const lower = t.toLowerCase();
+		// Built-in topics get special formatting
+		switch (lower) {
+			case 'ai': return 'A.I.';
+			case 'cs': return 'Computer Science';
+			case 'philosophy': return 'Philosophy';
+			default:
+				// Custom topics: capitalize first letter of each word
+				return t.split(/[\s_-]+/)
+					.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+					.join(' ');
+		}
+	}
+	
 	function getCritMessage(diff: string): string {
 		switch (diff.toLowerCase()) {
 			case 'easy':
-				return "⚡ CRITICAL HIT! Quick reflexes! +5% damage & XP!";
+				return "CRITICAL HIT! Quick reflexes! +5% damage!";
 			case 'medium':
-				return "⚡ CRITICAL HIT! Excellent timing! +15% damage & XP!";
+				return "CRITICAL HIT! Excellent timing! +15% damage!";
 			case 'hard':
-				return "⚡ CRITICAL HIT! Masterful precision! +25% damage & XP!";
+				return "CRITICAL HIT! Masterful precision! +25% damage!";
 			default:
-				return "⚡ CRITICAL HIT! +15% damage & XP!";
+				return "CRITICAL HIT! +15% damage!";
 		}
 	}
 	
 	function getDefeatReasonMessage(reason: string): string {
 		switch (reason) {
 			case 'hp_depleted':
-				return "💔 HP Depleted - Too many mistakes!";
+				return "HP Depleted - Too many mistakes!";
 			case 'counterattack':
-				return "💥 Boss Counterattack - Three wrong in a row!";
+				return "Boss Counterattack - Three wrong in a row!";
 			case 'accuracy_low':
 				return `Accuracy Too Low - Needed ${accuracyThreshold()}% to pass`;
 			case 'enemy_survived':
-				return "⏱️ Round Complete - Enemy survived!";
+				return "Round Complete - Enemy survived!";
 			default:
 				return "Defeat";
 		}
@@ -373,14 +398,43 @@
 			const startData = await roundRes.json();
 			console.log('[Play] Start round response:', startData);
 			
-			// 3. Load first question
-			await loadQuestion();
+			// 3. Show battle intro sequence, then load first question
+			await showIntroSequence();
 			
 		} catch (err: any) {
 			error = err.message || 'Failed to initialize game';
 		} finally {
 			loading = false;
 		}
+	}
+	
+	/**
+	 * Play the battle intro sequence (Pokemon-style encounter)
+	 * Duration: ~4 seconds total
+	 */
+	async function showIntroSequence(): Promise<void> {
+		showBattleIntro = true;
+		introPhase = 0;
+		
+		// Play encounter sound
+		sounds.play('encounter');
+		
+		// Phase 0: "A wild X appeared!" text (1.2s)
+		await new Promise(r => setTimeout(r, 1200));
+		
+		// Phase 1: Enemy sprite slides in (1.5s)
+		introPhase = 1;
+		sounds.play('select');
+		await new Promise(r => setTimeout(r, 1500));
+		
+		// Phase 2: "Get ready!" (1s)
+		introPhase = 2;
+		await new Promise(r => setTimeout(r, 1000));
+		
+		// End intro, load first question
+		showBattleIntro = false;
+		introPhase = 0;
+		await loadQuestion();
 	}
 	
 	async function loadQuestion() {
@@ -580,28 +634,26 @@
 				const damageTaken = result.damageTaken || 20;
 				playerHP = result.currentHp; // Sync with backend HP
 				
-				// Play damage animation
-				await playPlayerDamageAnimation(damageTaken);
+			// Play damage animation
+			await playPlayerDamageAnimation(damageTaken);
+			
+			// Check for player defeat
+			if (playerHP === 0) {
+				await new Promise(r => setTimeout(r, 300));
+				defeatAnimation(playerSpriteRef);
+				// Don't play defeat sound here - it will play when game over screen shows
 				
-				// Check for player defeat
-				if (playerHP === 0) {
-					await new Promise(r => setTimeout(r, 300));
-					defeatAnimation(playerSpriteRef);
-					sounds.play('defeat');
-					
-					// Determine defeat reason
-					if (result.isCounterattack) {
-						defeatReason = 'counterattack';
-					} else {
-						defeatReason = 'hp_depleted';
-					}
+				// Determine defeat reason
+				if (result.isCounterattack) {
+					defeatReason = 'counterattack';
+				} else {
+					defeatReason = 'hp_depleted';
 				}
 			}
-			
-			// Accumulate points
-			totalPoints += (result.pointsAwarded || 0);
-			
-			// Check if round is complete
+		}
+		
+		// Accumulate points
+		totalPoints += (result.pointsAwarded || 0);			// Check if round is complete
 			if (result.roundComplete || playerHP === 0 || enemyHP === 0) {
 				// Determine if it's a victory or defeat BEFORE setting roundComplete
 				// Victory: Enemy defeated (HP = 0) AND player still alive (HP > 0)
@@ -783,6 +835,8 @@
 		currentBgIndex = 1; // Reset background index
 		questionStartTime = null;
 		damagePopups = [];
+		showBattleIntro = false;
+		introPhase = 0;
 		
 		// Re-initialize the game
 		await initializeGame();
@@ -790,7 +844,7 @@
 </script>
 
 <div class="game-container">
-	{#if loading && !currentQuestion}
+	{#if loading && !currentQuestion && !showBattleIntro}
 		<div class="flex-1 flex items-center justify-center">
 			<div class="text-2xl font-bold animate-pulse text-blue-600">Loading Battle...</div>
 		</div>
@@ -799,6 +853,49 @@
 			<p class="text-red-600 mb-4 text-xl">{error}</p>
 			<button class="px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600" onclick={backToHome}>Retreat</button>
 		</div>
+	{:else if showBattleIntro}
+		<!-- Battle Intro Sequence -->
+		<div class="battle-intro" style="background-image: url('{backgroundImage}');">
+			<!-- Scan line overlay for retro effect -->
+			<div class="intro-scanlines"></div>
+			
+			<!-- Flash effect on encounter -->
+			<div class="intro-flash" class:active={introPhase === 0}></div>
+			
+			<!-- Phase 0 & 1: Encounter text -->
+			{#if introPhase >= 0}
+				<div class="intro-text-container" class:fade-out={introPhase >= 2} style="text-align: center;">
+					<p class="intro-text intro-text-wild" class:visible={introPhase >= 0}>
+						A wild
+					</p>
+					<h1 class="intro-text intro-text-boss" class:visible={introPhase >= 0}>
+						{getTopicDisplayName(topic)} BOSS
+					</h1>
+					<p class="intro-text intro-text-appeared" class:visible={introPhase >= 0}>
+						appeared!
+					</p>
+				</div>
+			{/if}
+			
+			<!-- Phase 1: Enemy sprite slides in -->
+			{#if introPhase >= 1}
+				<div class="intro-sprite-container" class:visible={introPhase >= 1}>
+					<img 
+						src={enemySprite()} 
+						alt="{topic} Boss" 
+						class="intro-enemy-sprite"
+						class:bounce={introPhase >= 1}
+					/>
+				</div>
+			{/if}
+			
+			<!-- Phase 2: Ready text -->
+			{#if introPhase >= 2}
+				<div class="intro-ready" class:visible={introPhase >= 2}>
+					<span class="ready-text">GET READY!</span>
+				</div>
+			{/if}
+		</div>
 	{:else if roundComplete}
 		<!-- Game Over Screen - RPG Styled -->
 		<div class="game-over-screen">
@@ -806,17 +903,17 @@
 			<div class="game-over-banner" class:victory={isVictory} class:defeat={!isVictory}>
 				{#if isVictory}
 					<h2 class="game-over-title victory-text">VICTORY!</h2>
-					<p class="game-over-subtitle">You defeated the {topic.toUpperCase()} Boss!</p>
+					<p class="game-over-subtitle">You defeated the {getTopicDisplayName(topic)} Boss!</p>
 				{:else}
 					<h2 class="game-over-title defeat-text">DEFEATED...</h2>
-					<p class="game-over-subtitle">The {topic.toUpperCase()} Boss was too strong this time.</p>
+					<p class="game-over-subtitle">The {getTopicDisplayName(topic)} Boss was too strong this time.</p>
 				{/if}
 			</div>
 			
 			<!-- Defeat Reason Badge -->
 			{#if !isVictory && defeatReason}
 				<div class="defeat-reason-badge">
-					<span class="defeat-reason-icon">⚠</span>
+					<span class="defeat-reason-icon">!</span>
 					<span class="defeat-reason-text">{getDefeatReasonMessage(defeatReason)}</span>
 				</div>
 			{/if}
@@ -825,7 +922,7 @@
 			{#if roundSummary}
 				<div class="stats-panel">
 					<div class="stats-header">
-						<span class="stats-header-icon">📊</span>
+						<span class="stats-header-icon">STATS</span>
 						<h3 class="stats-header-text">ROUND STATISTICS</h3>
 					</div>
 					
@@ -882,17 +979,14 @@
 			<div class="game-over-actions">
 				{#if !isVictory && answerHistory.length > 0}
 					<button class="action-btn action-btn-review" onclick={() => showReviewModal = true}>
-						<span class="action-btn-icon">📚</span>
-						<span>REVIEW</span>
+						<span class="action-btn-text">REVIEW</span>
 					</button>
 				{/if}
 				<button class="action-btn action-btn-retry" onclick={restartRound}>
-					<span class="action-btn-icon">🔄</span>
-					<span>RETRY</span>
+					<span class="action-btn-text">RETRY</span>
 				</button>
 				<button class="action-btn action-btn-home" onclick={backToHome}>
-					<span class="action-btn-icon">🏠</span>
-					<span>HOME</span>
+					<span class="action-btn-text">HOME</span>
 				</button>
 			</div>
 		</div>
@@ -927,7 +1021,7 @@
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
 					<HealthBar current={enemyHP} max={enemyMaxHP} label="ENEMY" color="bg-red-500" bind:barRef={enemyHpBarRef} />
 				</div>
-				<Sprite src={enemySprite} alt="{topic} Boss" isEnemy={true} bind:spriteRef={enemySpriteRef} />
+				<Sprite src={enemySprite()} alt="{topic} Boss" isEnemy={true} bind:spriteRef={enemySpriteRef} />
 			</div>
 
 			<!-- Player Zone (Bottom Left) -->
@@ -1274,14 +1368,25 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.5rem;
+		gap: 0.75rem;
 		margin-bottom: 1rem;
 		padding-bottom: 0.75rem;
 		border-bottom: 2px solid #334155;
 	}
 	
 	.stats-header-icon {
-		font-size: 1rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+		border: 2px solid #60a5fa;
+		border-radius: 6px;
+		font-family: 'Press Start 2P', monospace;
+		font-size: 0.35rem;
+		color: white;
+		text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
 	}
 	
 	.stats-header-text {
@@ -1354,10 +1459,9 @@
 	
 	.action-btn {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 0.75rem 1.25rem;
+		justify-content: center;
+		padding: 0.875rem 1.5rem;
 		border: 3px solid transparent;
 		border-radius: 10px;
 		font-family: 'Press Start 2P', system-ui, monospace;
@@ -1381,8 +1485,8 @@
 		transform: translateY(1px);
 	}
 	
-	.action-btn-icon {
-		font-size: 1.25rem;
+	.action-btn-text {
+		letter-spacing: 0.1em;
 	}
 	
 	.action-btn-review {
@@ -1419,6 +1523,228 @@
 			0 6px 20px rgba(100, 116, 139, 0.4),
 			0 0 20px rgba(100, 116, 139, 0.3),
 			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	
+	/* ===== Battle Intro Sequence ===== */
+	.battle-intro {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		background-size: cover;
+		background-position: center;
+		background-color: #0a0a12;
+		border-radius: 12px;
+		overflow: hidden;
+	}
+	
+	/* Retro scanline overlay */
+	.intro-scanlines {
+		position: absolute;
+		inset: 0;
+		background: repeating-linear-gradient(
+			0deg,
+			transparent,
+			transparent 2px,
+			rgba(0, 0, 0, 0.1) 2px,
+			rgba(0, 0, 0, 0.1) 4px
+		);
+		pointer-events: none;
+		z-index: 10;
+	}
+	
+	/* Flash effect on encounter */
+	.intro-flash {
+		position: absolute;
+		inset: 0;
+		background: white;
+		opacity: 0;
+		pointer-events: none;
+		z-index: 5;
+	}
+	
+	.intro-flash.active {
+		animation: intro-flash-anim 0.6s ease-out forwards;
+	}
+	
+	@keyframes intro-flash-anim {
+		0% { opacity: 0.9; }
+		100% { opacity: 0; }
+	}
+	
+	/* Text container */
+	.intro-text-container {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
+		z-index: 2;
+		transition: opacity 0.3s ease;
+		/* Positioned tightly with the sprite in center */
+		margin-top: 6rem;
+	}
+	
+	.intro-text-container.fade-out {
+		opacity: 0.3;
+	}
+	
+	/* Intro text styles */
+	.intro-text {
+		font-family: 'Press Start 2P', monospace;
+		color: white;
+		text-shadow: 
+			3px 3px 0 #000,
+			-1px -1px 0 #000,
+			1px -1px 0 #000,
+			-1px 1px 0 #000;
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	
+	.intro-text.visible {
+		animation: text-appear 0.5s ease-out forwards;
+	}
+	
+	.intro-text-wild {
+		font-size: 0.875rem;
+		color: #94a3b8;
+		animation-delay: 0s;
+	}
+	
+	.intro-text-wild.visible {
+		animation-delay: 0s;
+	}
+	
+	.intro-text-boss {
+		font-size: 1.5rem;
+		color: #ef4444;
+		text-shadow: 
+			4px 4px 0 #000,
+			0 0 20px rgba(239, 68, 68, 0.5);
+		margin: 0;
+	}
+	
+	.intro-text-boss.visible {
+		animation-delay: 0.2s;
+	}
+	
+	.intro-text-appeared {
+		font-size: 0.875rem;
+		color: #94a3b8;
+	}
+	
+	.intro-text-appeared.visible {
+		animation-delay: 0.4s;
+	}
+	
+	@keyframes text-appear {
+		0% {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	/* Enemy sprite container */
+	.intro-sprite-container {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 3;
+		opacity: 0;
+		/* Offset upward so sprite sits above center text */
+		margin-top: -8rem;
+	}
+	
+	.intro-sprite-container.visible {
+		animation: sprite-drop-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+	}
+	
+	@keyframes sprite-drop-in {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -50%) translateY(-100px);
+		}
+		60% {
+			opacity: 1;
+			transform: translate(-50%, -50%) translateY(8px);
+		}
+		80% {
+			transform: translate(-50%, -50%) translateY(-4px);
+		}
+		100% {
+			opacity: 1;
+			transform: translate(-50%, -50%) translateY(0);
+		}
+	}	.intro-enemy-sprite {
+		width: 160px;
+		height: 160px;
+		object-fit: contain;
+		image-rendering: pixelated;
+		filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.4));
+	}
+	
+	.intro-enemy-sprite.bounce {
+		animation: sprite-bounce 0.6s ease-in-out infinite;
+		animation-delay: 0.8s;
+	}
+	
+	@keyframes sprite-bounce {
+		0%, 100% { transform: translateY(0); }
+		50% { transform: translateY(-10px); }
+	}
+	
+	/* Ready text */
+	.intro-ready {
+		position: absolute;
+		bottom: 20%;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 4;
+		opacity: 0;
+	}
+	
+	.intro-ready.visible {
+		animation: ready-pulse 0.4s ease-out forwards;
+	}
+	
+	.ready-text {
+		font-family: 'Press Start 2P', monospace;
+		font-size: 1.25rem;
+		color: #fbbf24;
+		text-shadow: 
+			3px 3px 0 #000,
+			0 0 30px rgba(251, 191, 36, 0.6);
+		animation: ready-blink 0.3s ease-in-out infinite;
+	}
+	
+	@keyframes ready-pulse {
+		0% {
+			opacity: 0;
+			transform: translateX(-50%) scale(0.5);
+		}
+		50% {
+			transform: translateX(-50%) scale(1.2);
+		}
+		100% {
+			opacity: 1;
+			transform: translateX(-50%) scale(1);
+		}
+	}
+	
+	@keyframes ready-blink {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.7; }
 	}
 </style>
 

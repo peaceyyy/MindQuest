@@ -15,7 +15,7 @@
 	
 	// Quick test files available in questions folder
 	const testFiles = [
-		{ name: 'philosophy.csv', type: 'csv' },
+		{ name: 'pokemon	.csv', type: 'csv' },
 		{ name: 'philosophy.xlsx', type: 'xlsx' }
 	];
 	
