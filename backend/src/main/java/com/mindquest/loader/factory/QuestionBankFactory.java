@@ -87,6 +87,9 @@ public class QuestionBankFactory {
             case GEMINI_API:
                 return new GeminiQuestionSource();
             
+            case LOCAL_LLM:
+                return new LocalLlmQuestionSource();
+            
             default:
                 return new HardcodedQuestionSource();
         }

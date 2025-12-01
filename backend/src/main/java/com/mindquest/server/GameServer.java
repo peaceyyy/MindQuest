@@ -3,6 +3,7 @@ package com.mindquest.server;
 import com.mindquest.model.QuestionBank;
 import com.mindquest.server.handler.GameplayHandler;
 import com.mindquest.server.handler.GeminiHandler;
+import com.mindquest.server.handler.LocalLlmHandler;
 import com.mindquest.server.handler.SavedSetsHandler;
 import com.mindquest.server.handler.SessionHandler;
 import com.mindquest.server.handler.UploadHandler;
@@ -11,8 +12,7 @@ import io.javalin.Javalin;
 import java.util.Map;
 
 /**
- * Main entry point for the MindQuest Game Server.
- * Configures routes and delegates to specialized handlers.
+ * Main entry point for the MindQuest Game Server..
  */
 public class GameServer {
 
@@ -21,6 +21,7 @@ public class GameServer {
     private final GameplayHandler gameplayHandler;
     private final UploadHandler uploadHandler;
     private final GeminiHandler geminiHandler;
+    private final LocalLlmHandler localLlmHandler;
     private final SavedSetsHandler savedSetsHandler;
 
     public GameServer() {
@@ -33,6 +34,7 @@ public class GameServer {
         this.gameplayHandler = new GameplayHandler(sessionRegistry);
         this.uploadHandler = new UploadHandler();
         this.geminiHandler = new GeminiHandler();
+        this.localLlmHandler = new LocalLlmHandler();
         this.savedSetsHandler = new SavedSetsHandler();
     }
 
@@ -123,6 +125,12 @@ public class GameServer {
         app.get("/api/gemini/status", geminiHandler::getStatus);
         app.get("/api/gemini/network-test", geminiHandler::testNetwork);
         app.post("/api/gemini/generate", geminiHandler::generateQuestions);
+
+        // Local LLM (LM Studio) Integration
+        app.get("/api/llm/providers", localLlmHandler::getProviders);
+        app.get("/api/llm/local/status", localLlmHandler::getLocalStatus);
+        app.post("/api/llm/local/test", localLlmHandler::testLocalLlm);
+        app.post("/api/llm/local/generate", localLlmHandler::generateQuestions);
 
         // Saved AI Question Sets
         app.get("/api/saved-sets", savedSetsHandler::listSavedSets);

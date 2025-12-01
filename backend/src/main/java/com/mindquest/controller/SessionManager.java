@@ -297,9 +297,7 @@ public class SessionManager {
         state.set(new SessionState());
     }
 
-    /**
-     * Returns the number of questions loaded for the current round.
-     */
+   
     public int getCurrentRoundQuestionCount() {
         return state.get().currentRoundQuestions.size();
     }

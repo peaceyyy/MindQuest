@@ -1,30 +1,23 @@
 <script lang="ts">
 	/**
 	 * NintendoDSFrame.svelte
-	 * A CSS-based handheld gaming device frame (inspired by DS top screen).
-	 * The content is placed INSIDE the screen area - the frame hugs around it.
-	 * Designed for vertical/portrait orientation like a phone or tablet.
+	 * A minimal DS-inspired frame showing just the top half of the device.
+	 * As if looking down at a DS from above - clean and focused on the screen.
 	 */
 	
 	let { children } = $props();
 </script>
 
 <div class="device-wrapper">
-	<!-- The Device Shell -->
+	<!-- The Device Shell - Top half only -->
 	<div class="device-shell">
-		<!-- Top bezel with speaker grilles -->
+		<!-- Top bezel with speaker grilles and power LED -->
 		<div class="bezel-top">
+			<div class="power-led"></div>
 			<div class="speaker-grille"></div>
+			<div class="camera-dot"></div>
 			<div class="speaker-grille"></div>
-		</div>
-		
-		<!-- Left side rail with D-Pad -->
-		<div class="side-rail side-rail-left">
-			<div class="ds-dpad">
-				<div class="dpad-vertical"></div>
-				<div class="dpad-horizontal"></div>
-				<div class="dpad-center"></div>
-			</div>
+			<div class="wifi-led"></div>
 		</div>
 		
 		<!-- THE SCREEN - Content goes here -->
@@ -32,18 +25,12 @@
 			{@render children()}
 		</div>
 		
-		<!-- Right side rail with face buttons -->
-		<div class="side-rail side-rail-right">
-			<div class="ds-face-buttons">
-				<div class="ds-btn ds-btn-x">X</div>
-				<div class="ds-btn ds-btn-y">Y</div>
-				<div class="ds-btn ds-btn-a">A</div>
-				<div class="ds-btn ds-btn-b">B</div>
-			</div>
+		<!-- Hinge area - the "cut off" bottom edge -->
+		<div class="hinge-edge">
+			<div class="hinge-detail"></div>
+			<div class="hinge-groove"></div>
+			<div class="hinge-detail"></div>
 		</div>
-		
-		<!-- Bottom bezel -->
-		<div class="bezel-bottom"></div>
 	</div>
 </div>
 
@@ -56,54 +43,51 @@
 		width: 100%;
 		display: flex;
 		justify-content: center;
-		align-items: stretch;
-		padding: 12px;
+		align-items: flex-start;
+		padding: 0;
 		box-sizing: border-box;
 		overflow: hidden;
 		/* Dark background visible around the device */
-		background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+		background: linear-gradient(180deg, #0a0a12 0%, #12121f 50%, #0f0f1a 100%);
 	}
 	
-	/* ===== The Device Shell - Uses CSS Grid ===== */
+	/* ===== The Device Shell - Simple vertical layout ===== */
 	.device-shell {
-		display: grid;
-		grid-template-areas:
-			"top    top    top"
-			"left   screen right"
-			"bottom bottom bottom";
-		/* Fixed column widths: rails are fixed, screen is fixed */
-		grid-template-columns: 50px minmax(0, 800px) 50px;
-		grid-template-rows: 16px 1fr 16px;
+		display: flex;
+		flex-direction: column;
 		
-		/* Fixed width for the whole device */
-		width: 900px;
-		max-width: calc(100vw - 24px);
+		/* Width and height */
+		width: 100%;
+		max-width: 900px;
 		height: 100%;
-		max-height: calc(100vh - 24px);
 		
 		/* The red plastic shell */
-		background: linear-gradient(180deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
-		border-radius: 24px;
+		background: linear-gradient(180deg, #dc2626 0%, #c92020 30%, #b91c1c 100%);
+		
+		/* Rounded top corners only - bottom is "cut off" at hinge */
+		border-radius: 20px 20px 0 0;
 		
 		/* Outer shadow for depth */
 		box-shadow: 
-			0 8px 32px rgba(0, 0, 0, 0.4),
-			0 2px 8px rgba(0, 0, 0, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15);
+			0 8px 32px rgba(0, 0, 0, 0.5),
+			0 2px 8px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.12),
+			inset -2px 0 0 rgba(0, 0, 0, 0.1),
+			inset 2px 0 0 rgba(255, 255, 255, 0.05);
 	}
 	
 	/* ===== Top Bezel ===== */
 	.bezel-top {
-		grid-area: top;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		gap: 60px;
-		padding: 0 20px;
+		gap: 20px;
+		padding: 10px 20px;
+		flex-shrink: 0;
 	}
 	
 	.speaker-grille {
-		width: 40px;
+		width: 50px;
 		height: 6px;
 		background: repeating-linear-gradient(
 			90deg,
@@ -113,152 +97,70 @@
 			#991b1b 4px
 		);
 		border-radius: 3px;
-		opacity: 0.6;
+		opacity: 0.7;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
 	}
 	
-	/* ===== Bottom Bezel ===== */
-	.bezel-bottom {
-		grid-area: bottom;
-		background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%);
-		border-radius: 0 0 20px 20px;
-	}
-	
-	/* ===== Side Rails ===== */
-	.side-rail {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 20px 8px;
-	}
-	
-	.side-rail-left {
-		grid-area: left;
-		border-radius: 20px 0 0 20px;
-	}
-	
-	.side-rail-right {
-		grid-area: right;
-		border-radius: 0 20px 20px 0;
-	}
-	
-	/* ===== D-Pad ===== */
-	.ds-dpad {
-		position: relative;
-		width: 36px;
-		height: 36px;
-	}
-	
-	.dpad-vertical,
-	.dpad-horizontal {
-		position: absolute;
-		background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
-		border-radius: 3px;
-		box-shadow: 
-			inset 0 1px 0 rgba(255, 255, 255, 0.1),
-			0 2px 3px rgba(0, 0, 0, 0.4);
-	}
-	
-	.dpad-vertical {
-		width: 12px;
-		height: 36px;
-		left: 50%;
-		transform: translateX(-50%);
-	}
-	
-	.dpad-horizontal {
-		width: 36px;
-		height: 12px;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	
-	.dpad-center {
-		position: absolute;
-		width: 10px;
-		height: 10px;
-		background: #1f2937;
+	.power-led {
+		width: 6px;
+		height: 6px;
+		background: radial-gradient(circle, #22c55e 0%, #16a34a 60%, #15803d 100%);
 		border-radius: 50%;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
-	}
-	
-	/* ===== Face Buttons ===== */
-	.ds-face-buttons {
-		position: relative;
-		width: 36px;
-		height: 36px;
-	}
-	
-	.ds-btn {
-		position: absolute;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		font-size: 7px;
-		font-weight: bold;
-		color: #9ca3af;
-		display: flex;
-		align-items: center;
-		justify-content: center;
 		box-shadow: 
-			0 2px 3px rgba(0, 0, 0, 0.4),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15);
-		user-select: none;
+			0 0 6px rgba(34, 197, 94, 0.6),
+			0 0 2px rgba(34, 197, 94, 0.8);
+		animation: led-pulse 3s ease-in-out infinite;
 	}
 	
-	.ds-btn-x {
-		top: 0;
-		left: 50%;
-		transform: translateX(-50%);
-		background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+	.wifi-led {
+		width: 5px;
+		height: 5px;
+		background: radial-gradient(circle, #f59e0b 0%, #d97706 60%, #b45309 100%);
+		border-radius: 50%;
+		box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+		opacity: 0.8;
 	}
 	
-	.ds-btn-y {
-		top: 50%;
-		left: 0;
-		transform: translateY(-50%);
-		background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+	.camera-dot {
+		width: 8px;
+		height: 8px;
+		background: radial-gradient(circle, #1f2937 0%, #111827 100%);
+		border-radius: 50%;
+		box-shadow: 
+			inset 0 1px 2px rgba(0, 0, 0, 0.8),
+			0 0 0 1px rgba(0, 0, 0, 0.3);
 	}
 	
-	.ds-btn-a {
-		top: 50%;
-		right: 0;
-		transform: translateY(-50%);
-		background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-		color: #fecaca;
-	}
-	
-	.ds-btn-b {
-		bottom: 0;
-		left: 50%;
-		transform: translateX(-50%);
-		background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+	@keyframes led-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.6; }
 	}
 	
 	/* ===== THE SCREEN - Where content lives ===== */
 	.screen-viewport {
-		grid-area: screen;
-		background: #1a1a2e;
-		border-radius: 8px;
+		flex: 1;
+		margin: 0 12px;
+		background: #0a0a14;
+		border-radius: 6px;
 		overflow: auto;
 		
-		/* Fixed width for consistent layout - prevents content from causing width shifts */
-		width: 100%;
-		min-width: 0; /* Allow shrinking within grid */
+		/* Fixed width for consistent layout */
+		width: calc(100% - 24px);
+		min-width: 0;
+		min-height: 0;
 		
 		/* Flex container to let content fill properly */
 		display: flex;
 		flex-direction: column;
 		
-		/* Inner shadow to look recessed */
+		/* Inner shadow to look recessed like a real screen */
 		box-shadow: 
-			inset 0 2px 8px rgba(0, 0, 0, 0.5),
-			inset 0 0 2px rgba(0, 0, 0, 0.3);
+			inset 0 3px 12px rgba(0, 0, 0, 0.7),
+			inset 0 0 4px rgba(0, 0, 0, 0.5),
+			0 -1px 0 rgba(255, 255, 255, 0.05);
 		
-		/* Subtle screen bezel */
-		border: 3px solid #111827;
+		/* Dark screen bezel */
+		border: 3px solid #0f0f1a;
 	}
 	
 	/* Ensure content inside the screen fills it properly and doesn't overflow */
@@ -271,11 +173,43 @@
 		overflow: auto;
 	}
 	
-	/* ===== Responsive: Hide frame on small screens ===== */
+	/* ===== Hinge Edge - The "cut off" bottom ===== */
+	.hinge-edge {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 12px;
+		padding: 8px 20px 10px;
+		flex-shrink: 0;
+		background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%);
+		border-top: 1px solid rgba(0, 0, 0, 0.2);
+	}
+	
+	.hinge-detail {
+		width: 60px;
+		height: 4px;
+		background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+		border-radius: 2px;
+		box-shadow: 
+			inset 0 1px 0 rgba(255, 255, 255, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.4);
+	}
+	
+	.hinge-groove {
+		width: 120px;
+		height: 6px;
+		background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+		border-radius: 3px;
+		box-shadow: 
+			inset 0 2px 4px rgba(0, 0, 0, 0.6),
+			0 1px 0 rgba(255, 255, 255, 0.1);
+	}
+	
+	/* ===== Responsive: Simplify on small screens ===== */
 	@media (max-width: 700px) {
 		.device-wrapper {
 			padding: 0;
-			background: #1a1a2e;
+			background: #0a0a14;
 			max-height: none;
 			height: auto;
 			min-height: 100vh;
@@ -283,7 +217,6 @@
 		}
 		
 		.device-shell {
-			display: block;
 			background: transparent;
 			box-shadow: none;
 			border-radius: 0;
@@ -293,12 +226,13 @@
 		}
 		
 		.bezel-top,
-		.bezel-bottom,
-		.side-rail {
+		.hinge-edge {
 			display: none;
 		}
 		
 		.screen-viewport {
+			margin: 0;
+			width: 100%;
 			border-radius: 0;
 			border: none;
 			box-shadow: none;

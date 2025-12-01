@@ -1,5 +1,48 @@
 {
   "sets" : [ {
+    "id" : "bbf82f5a-dc8f-4d9b-89ea-c1083a184cca",
+    "name" : "The Minecraft Movie - Medium",
+    "topic" : "The Minecraft Movie",
+    "difficulty" : "medium",
+    "provider" : "gemini",
+    "createdAt" : 1764584106328,
+    "questions" : [ {
+      "questionText" : "Which major studio is producing 'The Minecraft Movie'?",
+      "choices" : [ "Warner Bros. Pictures", "Universal Pictures", "Paramount Pictures", "20th Century Studios" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_001",
+      "difficulty" : "Medium",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "What is the anticipated release year for 'The Minecraft Movie'?",
+      "choices" : [ "2025", "2024", "2026", "2023" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_002",
+      "difficulty" : "Medium",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "Who is confirmed to star as the character 'Steve' in 'The Minecraft Movie'?",
+      "choices" : [ "Jason Momoa", "Jack Black", "Chris Pratt", "Ryan Reynolds" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_003",
+      "difficulty" : "Medium",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "What type of film is 'The Minecraft Movie' expected to be?",
+      "choices" : [ "Live-action adventure", "Animated comedy", "CGI sci-fi", "Stop-motion fantasy" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_004",
+      "difficulty" : "Medium",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "Which director is attached to 'The Minecraft Movie'?",
+      "choices" : [ "Jared Hess", "Shawn Levy", "Rob McElhenney", "Peter Sollett" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_MEDIUM_005",
+      "difficulty" : "Medium",
+      "topic" : "The Minecraft Movie"
+    } ]
+  }, {
     "id" : "b124ca02-6c10-4ae2-b3bc-011e8691ee47",
     "name" : "World War I - Hard",
     "topic" : "World War I",

@@ -11,7 +11,8 @@ public class SourceConfig {
         CUSTOM_CSV,         // Load from custom CSV file (requires path)
         CUSTOM_EXCEL,       // Load from custom Excel file (requires path)
         CUSTOM_JSON,        // Load from custom JSON file (requires path)
-        GEMINI_API          // Generate questions via Gemini API
+        GEMINI_API,         // Generate questions via Gemini API (cloud)
+        LOCAL_LLM           // Generate questions via local LLM (LM Studio, offline)
     }
     
     private final SourceType type;

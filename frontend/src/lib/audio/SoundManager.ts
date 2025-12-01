@@ -2,16 +2,26 @@
  * SoundManager - Howler.js wrapper for game audio
  * 
  * Usage:
- *   import { sounds } from '$lib/audio/SoundManager';
+ *   import { sounds, bgm } from '$lib/audio/SoundManager';
  *   sounds.play('hit');
- *   sounds.play('miss');
- *   sounds.play('crit');
+ *   bgm.play('main_menu');
+ *   bgm.playForTopic('ai');
+ * 
+ * BGM Naming Convention:
+ *   - main_menu_* : Main menu tracks (e.g., main_menu_Driftveil.mp3)
+ *   - battle_[topic]_* : Battle tracks for built-in topics (e.g., battle_ai_1.mp3)
+ *   - custom_* : Default tracks for custom loaded questions (e.g., custom_1.mp3)
  */
 
 import { Howl } from 'howler';
 
+// Uniform volume level for all BGM (normalized)
+const BGM_VOLUME = 0.3;
+
+// Gap between loops in milliseconds (10 seconds)
+const LOOP_GAP_MS = 10000;
+
 // Sound effect definitions
-// Replace placeholder paths with actual audio files when available
 const soundDefs: Record<string, { src: string[]; volume?: number }> = {
 	hit: { src: ['sfx/hit.mp3'], volume: 0.6 },
 	miss: { src: ['sfx/damage.mp3'], volume: 0.4 },
@@ -22,6 +32,38 @@ const soundDefs: Record<string, { src: string[]; volume?: number }> = {
 	correct: { src: ['sfx/correct.mp3'], volume: 0.5 },
 	wrong: { src: ['sfx/wrong.mp3'], volume: 0.5 },
 };
+
+/**
+ * BGM Registry - Organized by category for future expansion
+ * 
+ * Categories:
+ *   - main_menu: Tracks for the main menu (can have multiple for randomization)
+ *   - battle_ai, battle_cs, battle_philosophy: Topic-specific battle tracks
+ *   - custom: Default tracks for custom loaded questions
+ */
+const bgmRegistry: Record<string, string[]> = {
+	// Main menu tracks (currently 1, expandable)
+	main_menu: [
+		'bgm/main_menu_Driftveil.mp3',
+	],
+	// Battle tracks per topic (indexed, expandable)
+	battle_ai: [
+		'bgm/bg_1_fukashigi.mp3',
+	],
+	battle_cs: [
+		'bgm/bg_2_N_Battle.mp3',
+	],
+	battle_philosophy: [
+		'bgm/bg_3_Cynthia_Battle.mp3',
+	],
+	// Default tracks for custom questions (expandable)
+	custom: [
+		'bgm/bg_1_fukashigi.mp3', // Reuse existing track as default
+	],
+};
+
+// Built-in topics that have dedicated battle music
+const BUILT_IN_TOPICS = ['ai', 'cs', 'philosophy'];
 
 class SoundManager {
 	private sounds: Map<string, Howl> = new Map();
@@ -134,5 +176,266 @@ class SoundManager {
 	}
 }
 
-// Singleton instance
+/**
+ * BGMManager - Background music manager with loop gap and category support
+ * 
+ * Features:
+ *   - Uniform volume across all tracks
+ *   - 10-second gap between loops
+ *   - Category-based organization (main_menu, battle_*, custom)
+ *   - Random track selection within categories
+ *   - Proper stop/start to prevent overlap
+ */
+class BGMManager {
+	private currentHowl: Howl | null = null;
+	private currentCategory: string | null = null;
+	private currentTrackIndex: number = 0;
+	private muted: boolean = false;
+	private volume: number = 1.0;
+	private fadeTime: number = 1000; // ms
+	private loopTimeoutId: ReturnType<typeof setTimeout> | null = null;
+	private isPlaying: boolean = false;
+
+	/**
+	 * Get a random track index from a category
+	 */
+	private getRandomTrackIndex(category: string): number {
+		const tracks = bgmRegistry[category];
+		if (!tracks || tracks.length === 0) return 0;
+		return Math.floor(Math.random() * tracks.length);
+	}
+
+	/**
+	 * Create a Howl instance for a specific track
+	 */
+	private createHowl(src: string): Howl {
+		return new Howl({
+			src: [src],
+			volume: BGM_VOLUME * this.volume,
+			loop: false, // We handle looping manually with gap
+			preload: true,
+			onend: () => this.onTrackEnd(),
+			onloaderror: (_id: number, err: unknown) => {
+				console.warn(`[BGMManager] Failed to load ${src}:`, err);
+			}
+		});
+	}
+
+	/**
+	 * Called when a track finishes playing
+	 */
+	private onTrackEnd(): void {
+		if (!this.isPlaying || this.muted) return;
+		
+		// Schedule next loop after gap
+		this.loopTimeoutId = setTimeout(() => {
+			if (this.isPlaying && this.currentCategory) {
+				this.playNextInCategory();
+			}
+		}, LOOP_GAP_MS);
+	}
+
+	/**
+	 * Play the next track in the current category (or same track if only one)
+	 */
+	private playNextInCategory(): void {
+		if (!this.currentCategory || this.muted) return;
+		
+		const tracks = bgmRegistry[this.currentCategory];
+		if (!tracks || tracks.length === 0) return;
+
+		// If multiple tracks, pick a different one randomly; otherwise replay same
+		if (tracks.length > 1) {
+			let newIndex = this.currentTrackIndex;
+			while (newIndex === this.currentTrackIndex) {
+				newIndex = this.getRandomTrackIndex(this.currentCategory);
+			}
+			this.currentTrackIndex = newIndex;
+		}
+
+		const src = tracks[this.currentTrackIndex];
+		
+		// Stop old howl completely
+		if (this.currentHowl) {
+			this.currentHowl.stop();
+			this.currentHowl.unload();
+		}
+
+		// Create and play new howl
+		this.currentHowl = this.createHowl(src);
+		this.currentHowl.volume(0);
+		this.currentHowl.play();
+		this.currentHowl.fade(0, BGM_VOLUME * this.volume, this.fadeTime);
+	}
+
+	/**
+	 * Play BGM by category name (e.g., 'main_menu', 'battle_ai', 'custom')
+	 */
+	play(category: string): void {
+		// If already playing this category, do nothing
+		if (this.currentCategory === category && this.isPlaying) {
+			return;
+		}
+
+		// Validate category exists
+		if (!bgmRegistry[category]) {
+			console.warn(`[BGMManager] Unknown category: ${category}`);
+			return;
+		}
+
+		// Stop any existing playback completely
+		this.stopInternal(false);
+
+		if (this.muted) return;
+
+		// Set up new category
+		this.currentCategory = category;
+		this.currentTrackIndex = this.getRandomTrackIndex(category);
+		this.isPlaying = true;
+
+		// Start playing
+		const tracks = bgmRegistry[category];
+		const src = tracks[this.currentTrackIndex];
+		
+		this.currentHowl = this.createHowl(src);
+		this.currentHowl.volume(0);
+		this.currentHowl.play();
+		this.currentHowl.fade(0, BGM_VOLUME * this.volume, this.fadeTime);
+	}
+
+	/**
+	 * Play battle music based on topic
+	 */
+	playForTopic(topic: string): void {
+		const normalizedTopic = topic.toLowerCase();
+		
+		// Check if it's a built-in topic with dedicated music
+		if (BUILT_IN_TOPICS.includes(normalizedTopic)) {
+			this.play(`battle_${normalizedTopic}`);
+		} else {
+			// Custom topic - use custom category
+			this.play('custom');
+		}
+	}
+
+	/**
+	 * Internal stop (with option to clear state)
+	 */
+	private stopInternal(clearState: boolean): void {
+		// Clear any pending loop timeout
+		if (this.loopTimeoutId) {
+			clearTimeout(this.loopTimeoutId);
+			this.loopTimeoutId = null;
+		}
+
+		// Stop and unload current howl
+		if (this.currentHowl) {
+			this.currentHowl.fade(this.currentHowl.volume(), 0, this.fadeTime);
+			const howlToUnload = this.currentHowl;
+			setTimeout(() => {
+				howlToUnload.stop();
+				howlToUnload.unload();
+			}, this.fadeTime);
+			this.currentHowl = null;
+		}
+
+		this.isPlaying = false;
+		
+		if (clearState) {
+			this.currentCategory = null;
+			this.currentTrackIndex = 0;
+		}
+	}
+
+	/**
+	 * Stop current BGM with fade out
+	 */
+	stop(): void {
+		this.stopInternal(true);
+	}
+
+	/**
+	 * Pause current BGM
+	 */
+	pause(): void {
+		if (this.loopTimeoutId) {
+			clearTimeout(this.loopTimeoutId);
+			this.loopTimeoutId = null;
+		}
+		if (this.currentHowl) {
+			this.currentHowl.pause();
+		}
+		this.isPlaying = false;
+	}
+
+	/**
+	 * Resume paused BGM
+	 */
+	resume(): void {
+		if (this.muted) return;
+		if (this.currentHowl) {
+			this.currentHowl.play();
+			this.isPlaying = true;
+		}
+	}
+
+	/**
+	 * Toggle mute state
+	 */
+	toggleMute(): boolean {
+		this.muted = !this.muted;
+		if (this.muted) {
+			this.pause();
+		} else {
+			this.resume();
+		}
+		return this.muted;
+	}
+
+	/**
+	 * Set mute state
+	 */
+	setMuted(muted: boolean): void {
+		this.muted = muted;
+		if (muted) {
+			this.pause();
+		} else {
+			this.resume();
+		}
+	}
+
+	/**
+	 * Get mute state
+	 */
+	isMuted(): boolean {
+		return this.muted;
+	}
+
+	/**
+	 * Set master volume (0.0 - 1.0)
+	 */
+	setVolume(vol: number): void {
+		this.volume = Math.max(0, Math.min(1, vol));
+		if (this.currentHowl) {
+			this.currentHowl.volume(BGM_VOLUME * this.volume);
+		}
+	}
+
+	/**
+	 * Get master volume
+	 */
+	getVolume(): number {
+		return this.volume;
+	}
+
+	/**
+	 * Get currently playing category
+	 */
+	getCurrentCategory(): string | null {
+		return this.currentCategory;
+	}
+}
+
+// Singleton instances
 export const sounds = new SoundManager();
+export const bgm = new BGMManager();

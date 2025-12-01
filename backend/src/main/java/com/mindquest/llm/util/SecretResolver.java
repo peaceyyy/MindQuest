@@ -30,30 +30,58 @@ public class SecretResolver {
      * Loads secrets from all available sources (env, .env, home).
      */
     private void loadSecrets() {
+        System.out.println("\n========== [SecretResolver] DEBUG START ==========");
+        
         // 1. Load from .env file in project root
         loadFromEnvFile();
+        System.out.println("[DEBUG] After .env: LOCAL_LLM_ENDPOINT = " + secrets.get("LOCAL_LLM_ENDPOINT"));
         
         // 2. Load from user home credentials file
         loadFromHomeCredentials();
+        System.out.println("[DEBUG] After home credentials: LOCAL_LLM_ENDPOINT = " + secrets.get("LOCAL_LLM_ENDPOINT"));
         
         // 3. System environment variables override everything
         loadFromSystemEnv();
+        System.out.println("[DEBUG] After system env: LOCAL_LLM_ENDPOINT = " + secrets.get("LOCAL_LLM_ENDPOINT"));
+        
+        System.out.println("[DEBUG] System.getenv('LOCAL_LLM_ENDPOINT') = " + System.getenv("LOCAL_LLM_ENDPOINT"));
+        System.out.println("========== [SecretResolver] DEBUG END ==========\n");
     }
     
     /**
      * Loads from .env file in the current directory or project root.
      */
     private void loadFromEnvFile() {
-        Path envPath = Paths.get(ENV_FILE);
+        // Try multiple locations to find .env file
+        Path[] possiblePaths = {
+            Paths.get(ENV_FILE),                    // Current directory
+            Paths.get("..", ENV_FILE),              // Parent directory
+            Paths.get(System.getProperty("user.dir"), ENV_FILE),  // Explicit current dir
+            Paths.get(System.getProperty("user.dir"), "..", ENV_FILE)  // Explicit parent
+        };
         
-        if (!Files.exists(envPath)) {
-            System.out.println("[SecretResolver] No .env file found in project root");
+        Path envPath = null;
+        for (Path p : possiblePaths) {
+            System.out.println("[DEBUG] Checking for .env at: " + p.toAbsolutePath().normalize());
+            if (Files.exists(p)) {
+                envPath = p;
+                break;
+            }
+        }
+        
+        if (envPath == null) {
+            System.out.println("[SecretResolver] No .env file found in any location");
+            System.out.println("[DEBUG] Current working directory: " + System.getProperty("user.dir"));
             return;
         }
+        
+        System.out.println("[DEBUG] Found .env at: " + envPath.toAbsolutePath().normalize());
         
         try (BufferedReader reader = Files.newBufferedReader(envPath)) {
             Properties props = new Properties();
             props.load(reader);
+            
+            System.out.println("[DEBUG] .env file contains LOCAL_LLM_ENDPOINT = " + props.getProperty("LOCAL_LLM_ENDPOINT"));
             
             for (String key : props.stringPropertyNames()) {
                 String value = props.getProperty(key).trim();
@@ -117,6 +145,7 @@ public class SecretResolver {
         for (String key : llmKeys) {
             String value = env.get(key);
             if (value != null && !value.isEmpty()) {
+                System.out.println("[DEBUG] System env variable " + key + " = " + value + " (will OVERRIDE file values)");
                 secrets.put(key, value); // Override file-based values
             }
         }
@@ -167,16 +196,20 @@ public class SecretResolver {
     
     /**
      * Gets the local LLM endpoint.
+     * Default: LM Studio's default port (1234)
      */
     public String getLocalLlmEndpoint() {
-        return getSecret("LOCAL_LLM_ENDPOINT", "http://localhost:11434");
+        String endpoint = getSecret("LOCAL_LLM_ENDPOINT", "http://localhost:1234/v1");
+        System.out.println("[DEBUG] getLocalLlmEndpoint() returning: " + endpoint);
+        return endpoint;
     }
     
     /**
      * Gets the local LLM model name.
+     * LM Studio ignores this if only one model is loaded.
      */
     public String getLocalLlmModel() {
-        return getSecret("LOCAL_LLM_MODEL", "llama2");
+        return getSecret("LOCAL_LLM_MODEL", "local-model");
     }
     
     /**

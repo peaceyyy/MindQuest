@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CustomQuestionsModal from '$lib/components/CustomQuestionsModal.svelte';
-	import { sounds } from '$lib/audio/SoundManager';
+	import { sounds, bgm } from '$lib/audio/SoundManager';
 	
 	let topic = $state('ai');
 	let difficulty = $state('easy');
@@ -21,6 +21,8 @@
 	
 	onMount(async () => {
 		await loadGlobalPoints();
+		// Start main menu BGM
+		bgm.play('main_menu');
 	});
 	
 	async function loadGlobalPoints() {

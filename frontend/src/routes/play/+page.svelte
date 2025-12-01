@@ -13,7 +13,7 @@
 	import BattleSidebar from '$lib/components/battle/BattleSidebar.svelte';
 	import ReviewModal from '$lib/components/ReviewModal.svelte';
 	import { screenShake, knockback, flashElement, attackLunge, victoryPose, defeatAnimation, hpBarDamageFlash } from '$lib/animations/battleEffects';
-	import { sounds } from '$lib/audio/SoundManager';
+	import { sounds, bgm } from '$lib/audio/SoundManager';
 	
 	// Game state
 	let sessionId = $state('');
@@ -261,6 +261,9 @@
 		const source = page.url.searchParams.get('source');
 		
 		console.log('[Play] Mounted with source:', source, 'topic:', topic, 'difficulty:', difficulty);
+		
+		// Start battle BGM for this topic
+		bgm.playForTopic(topic);
 		
 		// Check if this is an inline questions session (from Gemini or saved sets)
 		let inlineQuestions: any[] | null = null;
@@ -710,6 +713,7 @@
 		} catch (e) {
 			console.warn('Failed to persist career points on quit:', e);
 		}
+		// BGM will transition when main menu mounts
 		goto('/');
 	}
 

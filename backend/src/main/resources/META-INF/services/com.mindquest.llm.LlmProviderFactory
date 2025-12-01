@@ -1,2 +1,3 @@
 com.mindquest.llm.providers.MockProviderFactory
 com.mindquest.llm.providers.GeminiProviderFactory
+com.mindquest.llm.providers.local.LocalLlmProviderFactory

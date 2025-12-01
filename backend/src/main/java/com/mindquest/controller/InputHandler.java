@@ -1,5 +1,8 @@
 package com.mindquest.controller;
 
+
+// for CLI-based 
+
 import java.util.Scanner;
 
 public class InputHandler {

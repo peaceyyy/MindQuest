@@ -7,8 +7,22 @@
         ontopicselect: (topicName: string, source?: 'file' | 'gemini' | 'saved', geminiQuestions?: any[]) => void;
     }>();
 
-    // Tab state - now only files and gemini
-    let activeTab = $state<'files' | 'gemini'>('files');
+    // Tab state - now only files and ai (renamed from gemini)
+    let activeTab = $state<'files' | 'ai'>('files');
+    
+    // === LLM PROVIDER STATE ===
+    type LlmProvider = {
+        id: string;
+        name: string;
+        available: boolean;
+        type: 'cloud' | 'local' | 'mock';
+        loadedModel?: string;
+        endpoint?: string;
+        unavailableReason?: string;
+    };
+    let llmProviders = $state<LlmProvider[]>([]);
+    let selectedProvider = $state<string>('gemini'); // Default to gemini
+    let providersLoading = $state(true);
 
     // === FILES TAB STATE ===
     type TopicItem = {
@@ -31,6 +45,7 @@
     let geminiGenerating = $state(false);
     let geminiGeneratedQuestions = $state<any[]>([]);
     let geminiGenerationTime = $state(0);
+    let currentProviderName = $state('AI'); // For display purposes
 
     // === SAVED SETS TAB STATE ===
     type SavedSet = {
@@ -63,10 +78,61 @@
     onMount(async () => {
         await Promise.all([
             loadCustomTopics(),
-            checkGeminiStatus(),
+            loadLlmProviders(),
             loadSavedSets()
         ]);
     });
+    
+    // Load available LLM providers from backend
+    async function loadLlmProviders() {
+        providersLoading = true;
+        try {
+            const res = await fetch('http://localhost:7070/api/llm/providers');
+            const data = await res.json();
+            llmProviders = data.providers || [];
+            
+            // Set default provider to first available one
+            const availableProvider = llmProviders.find(p => p.available);
+            if (availableProvider) {
+                selectedProvider = availableProvider.id;
+                updateCurrentProviderName();
+            }
+            
+            // Update gemini availability based on provider data
+            const geminiProvider = llmProviders.find(p => p.id === 'gemini');
+            geminiAvailable = geminiProvider?.available ?? false;
+            if (geminiProvider && !geminiProvider.available) {
+                geminiError = geminiProvider.unavailableReason || 'Gemini not available';
+            }
+            
+            geminiLoading = false;
+        } catch (err: any) {
+            console.error('Failed to load LLM providers:', err);
+            geminiError = 'Could not connect to server';
+            geminiLoading = false;
+        } finally {
+            providersLoading = false;
+        }
+    }
+    
+    function updateCurrentProviderName() {
+        const provider = llmProviders.find(p => p.id === selectedProvider);
+        currentProviderName = provider?.name || 'AI';
+    }
+    
+    function selectProvider(providerId: string) {
+        const provider = llmProviders.find(p => p.id === providerId);
+        if (provider && provider.available) {
+            selectedProvider = providerId;
+            updateCurrentProviderName();
+            geminiError = null;
+            geminiGeneratedQuestions = [];
+        }
+    }
+    
+    // Get the currently selected provider object
+    let currentProvider = $derived(llmProviders.find(p => p.id === selectedProvider));
+    let anyProviderAvailable = $derived(llmProviders.some(p => p.available && p.id !== 'mock'));
 
     // Filter computed derived state
     let filteredTopics = $derived(
@@ -127,6 +193,7 @@
     }
 
     async function checkGeminiStatus() {
+        // This is now handled by loadLlmProviders, kept for backward compatibility
         geminiLoading = true;
         try {
             const res = await fetch('http://localhost:7070/api/gemini/status');
@@ -152,14 +219,20 @@
         geminiGeneratedQuestions = [];
         const startTime = Date.now();
         
+        // Determine which endpoint to use based on selected provider
+        let generateEndpoint = 'http://localhost:7070/api/gemini/generate';
+        if (selectedProvider === 'local') {
+            generateEndpoint = 'http://localhost:7070/api/llm/local/generate';
+        }
+        
         try {
-            const res = await fetch('http://localhost:7070/api/gemini/generate', {
+            const res = await fetch(generateEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     topic: geminiTopic.trim(),
                     difficulty: geminiDifficulty,
-                    count: geminiQuestionCount  // Backend expects 'count', not 'questionCount'
+                    count: geminiQuestionCount
                 })
             });
             
@@ -173,7 +246,7 @@
             geminiGenerationTime = Date.now() - startTime;
             
         } catch (err: any) {
-            console.error('Gemini generation failed:', err);
+            console.error('Question generation failed:', err);
             geminiError = err.message || 'Failed to generate questions';
         } finally {
             geminiGenerating = false;
@@ -241,7 +314,7 @@
                     name: saveSetName.trim(),
                     topic: geminiTopic.trim(),
                     difficulty: geminiDifficulty,
-                    provider: 'gemini',
+                    provider: selectedProvider,
                     questions: geminiGeneratedQuestions
                 })
             });
@@ -349,18 +422,18 @@
                     class="tab-btn {activeTab === 'files' ? 'active' : ''}"
                     onclick={() => activeTab = 'files'}
                 >
-                    <span class="tab-icon">+</span>
+                    <span class="tab-icon">📁</span>
                     Files
                 </button>
                 <button 
-                    class="tab-btn {activeTab === 'gemini' ? 'active' : ''}"
-                    onclick={() => activeTab = 'gemini'}
+                    class="tab-btn {activeTab === 'ai' ? 'active' : ''}"
+                    onclick={() => activeTab = 'ai'}
                 >
-                    <span class="tab-icon">*</span>
-                    Gemini AI
-                    {#if !geminiLoading && geminiAvailable}
+                    <span class="tab-icon">🤖</span>
+                    LLM Providers
+                    {#if !providersLoading && anyProviderAvailable}
                         <span class="status-dot available"></span>
-                    {:else if !geminiLoading && !geminiAvailable}
+                    {:else if !providersLoading && !anyProviderAvailable}
                         <span class="status-dot unavailable"></span>
                     {/if}
                 </button>
@@ -451,31 +524,68 @@
                 </div>
             {/if}
 
-            <!-- GEMINI TAB -->
-            {#if activeTab === 'gemini'}
+            <!-- AI GENERATION TAB -->
+            {#if activeTab === 'ai'}
                 <div class="gemini-section">
-                    {#if geminiLoading}
+                    {#if providersLoading}
                         <div class="loading-state">
                             <div class="spinner"></div>
-                            <p>Checking Gemini availability...</p>
+                            <p>Loading AI providers...</p>
                         </div>
-                    {:else if !geminiAvailable}
+                    {:else if !anyProviderAvailable}
                         <div class="gemini-unavailable">
-                            <div class="unavailable-icon">!</div>
-                            <h3>Gemini API Not Configured</h3>
-                            <p>{geminiError}</p>
+                            <div class="unavailable-icon">🤖</div>
+                            <h3>No AI Providers Available</h3>
+                            <p>Configure at least one provider to generate questions.</p>
                             <div class="setup-instructions">
-                                <p>To enable AI-generated questions:</p>
+                                <p><strong>Option 1: Cloud (Gemini)</strong></p>
                                 <ol>
                                     <li>Get an API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a></li>
                                     <li>Add <code>GOOGLE_API_KEY=your_key</code> to your <code>.env</code> file</li>
                                     <li>Restart the backend server</li>
                                 </ol>
+                                <p style="margin-top: 1rem;"><strong>Option 2: Local (LM Studio)</strong></p>
+                                <ol>
+                                    <li>Download <a href="https://lmstudio.ai" target="_blank" rel="noopener">LM Studio</a></li>
+                                    <li>Load a model (Llama 3, Mistral, Phi, etc.)</li>
+                                    <li>Go to Developer → Start Server</li>
+                                </ol>
                             </div>
-                            <button onclick={checkGeminiStatus} class="retry-button">Check Again</button>
+                            <button onclick={loadLlmProviders} class="retry-button">Check Again</button>
                         </div>
                     {:else}
-                        <!-- Gemini Configuration Form -->
+                        <!-- Provider Selector -->
+                        <div class="provider-selector">
+                            <label for="llm-provider">AI Provider</label>
+                            <div class="provider-options">
+                                {#each llmProviders.filter(p => p.id !== 'mock') as provider (provider.id)}
+                                    <button
+                                        class="provider-btn {selectedProvider === provider.id ? 'active' : ''} {!provider.available ? 'disabled' : ''} {provider.type}"
+                                        onclick={() => selectProvider(provider.id)}
+                                        disabled={!provider.available}
+                                        title={provider.available ? provider.name : provider.unavailableReason}
+                                    >
+                                        <span class="provider-icon">
+                                            {#if provider.type === 'cloud'}☁️{:else}💻{/if}
+                                        </span>
+                                        <span class="provider-name">{provider.name}</span>
+                                        {#if provider.available}
+                                            <span class="provider-status available">●</span>
+                                        {:else}
+                                            <span class="provider-status unavailable">○</span>
+                                        {/if}
+                                        {#if provider.loadedModel}
+                                            <span class="provider-model">{provider.loadedModel.split('/').pop()}</span>
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
+                            {#if currentProvider?.type === 'local' && currentProvider?.loadedModel}
+                                <p class="provider-hint">Using model: {currentProvider.loadedModel}</p>
+                            {/if}
+                        </div>
+                        
+                        <!-- Question Generation Form -->
                         <div class="gemini-form">
                             <!-- Topic Input -->
                             <div class="form-group">
@@ -547,15 +657,15 @@
                             
                             <!-- Generate Button -->
                             <button 
-                                class="generate-btn"
+                                class="generate-btn {selectedProvider === 'local' ? 'local' : 'cloud'}"
                                 onclick={generateGeminiQuestions}
-                                disabled={!topicValid || geminiGenerating}
+                                disabled={!topicValid || geminiGenerating || !currentProvider?.available}
                             >
                                 {#if geminiGenerating}
                                     <div class="btn-spinner"></div>
-                                    Generating Questions...
+                                    Generating with {currentProviderName}...
                                 {:else}
-                                    Generate Questions
+                                    🎯 Generate Questions
                                 {/if}
                             </button>
                             
@@ -1921,6 +2031,119 @@
         border-radius: 1rem;
         font-size: 0.8rem;
         font-weight: 600;
+    }
+
+    /* Provider Selector Styles */
+    .provider-selector {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .provider-selector label {
+        display: block;
+        color: #d1d5db;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .provider-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .provider-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #4b5563;
+        border-radius: 10px;
+        color: #9ca3af;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+    .provider-btn:hover:not(.disabled) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #6b7280;
+    }
+
+    .provider-btn.active {
+        border-color: #8b5cf6;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+        color: white;
+    }
+
+    .provider-btn.active.cloud {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+    }
+
+    .provider-btn.active.local {
+        border-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
+    }
+
+    .provider-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .provider-icon {
+        font-size: 1.25rem;
+    }
+
+    .provider-name {
+        flex: 1;
+    }
+
+    .provider-status {
+        font-size: 0.75rem;
+    }
+
+    .provider-status.available {
+        color: #10b981;
+    }
+
+    .provider-status.unavailable {
+        color: #6b7280;
+    }
+
+    .provider-model {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        background: rgba(16, 185, 129, 0.2);
+        border-radius: 4px;
+        color: #34d399;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .provider-hint {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    /* Generate button variants */
+    .generate-btn.local {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-color: #34d399;
+    }
+
+    .generate-btn.cloud {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+        border-color: #a5b4fc;
     }
 
 </style>
