@@ -900,93 +900,97 @@
 		<!-- Game Over Screen -->
 		<div class="game-over-screen">
 			
-			<div class="game-over-banner" class:victory={isVictory} class:defeat={!isVictory}>
-				{#if isVictory}
-					<h2 class="game-over-title victory-text">VICTORY!</h2>
-					<p class="game-over-subtitle">You defeated the {getTopicDisplayName(topic)} Boss!</p>
-				{:else}
-					<h2 class="game-over-title defeat-text">DEFEATED...</h2>
-					<p class="game-over-subtitle">The {getTopicDisplayName(topic)} Boss was too strong this time.</p>
+			<!-- Card 1: Defeat/Victory Banner -->
+			<div class="game-over-card">
+				<div class="game-over-banner" class:victory={isVictory} class:defeat={!isVictory}>
+					{#if isVictory}
+						<h2 class="game-over-title victory-text">VICTORY!</h2>
+						<p class="game-over-subtitle">You defeated the {getTopicDisplayName(topic)} Boss!</p>
+					{:else}
+						<h2 class="game-over-title defeat-text">DEFEATED...</h2>
+						<p class="game-over-subtitle">The {getTopicDisplayName(topic)} Boss was too strong this time.</p>
+					{/if}
+				</div>
+				
+				{#if !isVictory && defeatReason}
+					<div class="defeat-reason-badge">
+						<span class="defeat-reason-icon">!</span>
+						<span class="defeat-reason-text">{getDefeatReasonMessage(defeatReason)}</span>
+					</div>
 				{/if}
 			</div>
-			
-			
-			{#if !isVictory && defeatReason}
-				<div class="defeat-reason-badge">
-					<span class="defeat-reason-icon">!</span>
-					<span class="defeat-reason-text">{getDefeatReasonMessage(defeatReason)}</span>
-				</div>
-			{/if}
 		
-			{#if roundSummary}
-				<div class="stats-panel">
-					<div class="stats-header">
-						<span class="stats-header-icon">STATS</span>
-						<h3 class="stats-header-text">ROUND STATISTICS</h3>
-					</div>
-					
-					<div class="stats-grid">
-						<div class="stat-item">
-							<span class="stat-label">QUESTIONS</span>
-							<span class="stat-value stat-blue">{roundSummary.totalQuestions}</span>
+			<!-- Card 2: Stats and Actions -->
+			<div class="game-over-card">
+				{#if roundSummary}
+					<div class="stats-panel">
+						<div class="stats-header">
+							<h3 class="stats-header-text">ROUND STATISTICS</h3>
 						</div>
-						<div class="stat-item">
-							<span class="stat-label">ACCURACY</span>
-							<span class="stat-value" class:stat-green={roundSummary.accuracyPercentage >= 60} class:stat-red={roundSummary.accuracyPercentage < 60}>
-								{roundSummary.accuracyPercentage.toFixed(1)}%
-							</span>
+						
+						<div class="stats-grid">
+							<div class="stat-item">
+								<span class="stat-label">QUESTIONS</span>
+								<span class="stat-value stat-blue">{roundSummary.totalQuestions}</span>
+							</div>
+							<div class="stat-item">
+								<span class="stat-label">ACCURACY</span>
+								<span class="stat-value" class:stat-green={roundSummary.accuracyPercentage >= 60} class:stat-red={roundSummary.accuracyPercentage < 60}>
+									{roundSummary.accuracyPercentage.toFixed(1)}%
+								</span>
+							</div>
+							<div class="stat-item">
+								<span class="stat-label">CORRECT</span>
+								<span class="stat-value stat-green">{roundSummary.correctAnswers}</span>
+							</div>
+							<div class="stat-item">
+								<span class="stat-label">MISSES</span>
+								<span class="stat-value stat-red">{roundSummary.incorrectAnswers}</span>
+							</div>
 						</div>
-						<div class="stat-item">
-							<span class="stat-label">CORRECT</span>
-							<span class="stat-value stat-green">{roundSummary.correctAnswers}</span>
-						</div>
-						<div class="stat-item">
-							<span class="stat-label">MISSES</span>
-							<span class="stat-value stat-red">{roundSummary.incorrectAnswers}</span>
-						</div>
-					</div>
-					
-					{#if roundSummary.averageAnswerTimeMs > 0}
+						
+						{#if roundSummary.averageAnswerTimeMs > 0}
+							<div class="stats-divider"></div>
+							<div class="stat-row">
+								<span class="stat-label">AVG TIME</span>
+								<span class="stat-value stat-purple">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</span>
+							</div>
+						{/if}
+						
 						<div class="stats-divider"></div>
-						<div class="stat-row">
-							<span class="stat-label">AVG TIME</span>
-							<span class="stat-value stat-purple">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</span>
+						<div class="stat-row stat-highlight">
+							<span class="stat-label">POINTS EARNED</span>
+							<span class="stat-value stat-gold">{totalPoints}</span>
 						</div>
-					{/if}
-					
-					<div class="stats-divider"></div>
-					<div class="stat-row stat-highlight">
-						<span class="stat-label">POINTS EARNED</span>
-						<span class="stat-value stat-gold">{totalPoints}</span>
 					</div>
-				</div>
-			{:else}
-				<!-- Fallback Stats -->
-				<div class="stats-panel">
-					<div class="stat-row">
-						<span class="stat-label">TOTAL POINTS</span>
-						<span class="stat-value stat-blue">{totalPoints}</span>
+				{:else}
+					<!-- Fallback Stats -->
+					<div class="stats-panel">
+						<div class="stat-row">
+							<span class="stat-label">TOTAL POINTS</span>
+							<span class="stat-value stat-blue">{totalPoints}</span>
+						</div>
+						<div class="stat-row">
+							<span class="stat-label">ANSWERED</span>
+							<span class="stat-value stat-gray">{questionsAnswered}</span>
+						</div>
 					</div>
-					<div class="stat-row">
-						<span class="stat-label">ANSWERED</span>
-						<span class="stat-value stat-gray">{questionsAnswered}</span>
-					</div>
-				</div>
-			{/if}
-			
-			<!-- Action Buttons -->
-			<div class="game-over-actions">
-				{#if !isVictory && answerHistory.length > 0}
-					<button class="action-btn action-btn-review" onclick={() => showReviewModal = true}>
-						<span class="action-btn-text">REVIEW</span>
-					</button>
 				{/if}
-				<button class="action-btn action-btn-retry" onclick={restartRound}>
-					<span class="action-btn-text">RETRY</span>
-				</button>
-				<button class="action-btn action-btn-home" onclick={backToHome}>
-					<span class="action-btn-text">HOME</span>
-				</button>
+				
+				<!-- Action Buttons -->
+				<div class="game-over-actions">
+					{#if !isVictory && answerHistory.length > 0}
+						<button class="action-btn action-btn-review" onclick={() => showReviewModal = true}>
+							<span class="action-btn-text">REVIEW</span>
+						</button>
+					{/if}
+					<button class="action-btn action-btn-retry" onclick={restartRound}>
+						<span class="action-btn-text">RETRY</span>
+					</button>
+					<button class="action-btn action-btn-home" onclick={backToHome}>
+						<span class="action-btn-text">HOME</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	{:else if currentQuestion}
@@ -1015,16 +1019,16 @@
 		
 
 	
-		<div class="flex justify-end items-center gap-4 p-4 mt-8">
+		<div class="flex justify-end items-center gap-6 p-4 mt-8">
 				<div class="text-right">
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
-					<HealthBar current={enemyHP} max={enemyMaxHP} label="ENEMY" color="bg-red-500" bind:barRef={enemyHpBarRef} />
+					<HealthBar current={enemyHP} max={enemyMaxHP} label="HP" color="bg-red-500" bind:barRef={enemyHpBarRef} />
 				</div>
 				<Sprite src={enemySprite()} alt="{topic} Boss" isEnemy={true} bind:spriteRef={enemySpriteRef} />
 			</div>
 
 			
-			<div class="flex justify-start items-center gap-4 p-4 mt-auto mb-4">
+			<div class="flex justify-start items-center gap-6 p-4 mt-auto mb-4">
 				<Sprite src={playerSprite} alt="Player" bind:spriteRef={playerSpriteRef} />
 				<div>
 					<h3 class="font-bold text-lg md:text-xl text-blue-600 tracking-widest">YOU</h3>
@@ -1034,7 +1038,7 @@
 		
 				{#if questionsAnswered > 0}
 					<!-- Streak indicators remain near the player but meter moved to UI panel -->
-					<div class="flex flex-col gap-2">
+					<div class="flex flex-col gap-2 max-w-[180px]">
 						{#if correctStreak >= 3}
 							<div class="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-2 border-yellow-500 rounded-lg px-3 py-2 text-center animate-pulse">
 								<div class="text-yellow-400 font-bold text-sm">🔥 HOT STREAK!</div>
@@ -1184,6 +1188,7 @@
 		position: relative;
 		width: 100%;
 		padding: 12px 20px;
+		margin-top: 0.75rem;
 		background: linear-gradient(180deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
 		border: 4px solid transparent;
 		border-radius: 12px;
@@ -1276,10 +1281,84 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 1.25rem;
-		padding: 1rem;
+		gap: 1.5rem;
+		padding: 2rem 1rem;
 		text-align: center;
 		font-family: 'Press Start 2P', system-ui, monospace;
+		background: linear-gradient(to bottom, #312e81 0%, #581c87 50%, #0f172a 100%);
+	}
+	
+	/* Card wrapper for sections - RPG-style dark matte with golden accents */
+	.game-over-card {
+		position: relative;
+		width: 100%;
+		max-width: 480px;
+		background: linear-gradient(180deg, 
+			rgba(20, 20, 26, 0.98) 0%, 
+			rgba(15, 15, 20, 0.99) 100%
+		);
+		border-radius: 12px;
+		padding: 1.5rem;
+		filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+		
+		/* Outer golden border using box-shadow */
+		box-shadow: 
+			0 0 0 3px rgba(234, 179, 8, 0.5),
+			0 0 20px rgba(234, 179, 8, 0.15),
+			0 0 40px rgba(234, 179, 8, 0.08),
+			inset 0 1px 2px rgba(0, 0, 0, 0.5),
+			inset 0 -1px 0 rgba(234, 179, 8, 0.05);
+	}
+	
+	/* Animated gradient border effect using pseudo-element */
+	.game-over-card::before {
+		content: '';
+		position: absolute;
+		inset: -4px;
+		border-radius: 14px;
+		background: linear-gradient(135deg, 
+			rgba(234, 179, 8, 0.4) 0%, 
+			rgba(202, 138, 4, 0.3) 25%,
+			rgba(161, 98, 7, 0.2) 50%,
+			rgba(202, 138, 4, 0.3) 75%,
+			rgba(234, 179, 8, 0.4) 100%
+		);
+		background-size: 200% 200%;
+		animation: border-shimmer 3s ease-in-out infinite;
+		z-index: -1;
+	}
+	
+	@keyframes border-shimmer {
+		0%, 100% { background-position: 0% 50%; }
+		50% { background-position: 100% 50%; }
+	}
+	
+	/* Pixel-art corner decorations - golden RPG style */
+	.game-over-card::after {
+		content: '';
+		position: absolute;
+		top: 8px;
+		left: 8px;
+		width: 10px;
+		height: 10px;
+		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		border-radius: 2px;
+		box-shadow: 
+			0 0 8px rgba(251, 191, 36, 0.3),
+			456px 0 0 0 #fbbf24,
+			0 456px 0 0 #fbbf24,
+			456px 456px 0 0 #fbbf24,
+			0 0 8px rgba(251, 191, 36, 0.3),
+			456px 0 0 8px rgba(251, 191, 36, 0.3),
+			0 456px 0 8px rgba(251, 191, 36, 0.3),
+			456px 456px 0 8px rgba(251, 191, 36, 0.3);
+		z-index: 10;
+		animation: corner-pulse 2s ease-in-out infinite;
+	}
+	
+	@keyframes corner-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.6; }
 	}
 	
 	/* Title Banner */
@@ -1295,7 +1374,7 @@
 		font-weight: 800;
 		letter-spacing: 0.05em;
 		text-shadow: 
-			3px 3px 0 rgba(0, 0, 0, 0.4),
+			2px 2px 0 rgba(0, 0, 0, 0.3),
 			0 0 20px currentColor;
 		animation: title-pulse 2s ease-in-out infinite;
 	}
@@ -1321,8 +1400,9 @@
 	
 	.game-over-subtitle {
 		font-size: 0.625rem;
-		color: #94a3b8;
+		color: #fde047;
 		letter-spacing: 0.1em;
+		text-shadow: 0 0 10px rgba(253, 224, 71, 0.3);
 	}
 	
 	/* Defeat Reason Badge */
@@ -1330,13 +1410,14 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.625rem 1rem;
-		background: linear-gradient(180deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%);
-		border: 2px solid #ef4444;
+		padding: 0.75rem 1rem;
+		margin-top: 1rem;
+		background: linear-gradient(180deg, rgba(127, 29, 29, 0.4) 0%, rgba(87, 13, 13, 0.6) 100%);
+		border: 3px solid #fca5a5;
 		border-radius: 8px;
 		box-shadow: 
-			0 0 15px rgba(239, 68, 68, 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+			0 0 20px rgba(252, 165, 165, 0.3),
+			inset 0 1px 0 rgba(252, 165, 165, 0.2);
 	}
 	
 	.defeat-reason-icon {
@@ -1345,74 +1426,65 @@
 	}
 	
 	.defeat-reason-text {
-		font-size: 0.5rem;
-		color: #fca5a5;
+		font-size: 0.625rem;
+		color: #fecaca;
+		font-weight: 600;
 		letter-spacing: 0.05em;
 	}
 	
 	/* Stats Panel */
 	.stats-panel {
 		width: 100%;
-		max-width: 320px;
-		background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-		border: 3px solid #334155;
-		border-radius: 12px;
-		padding: 1rem;
-		box-shadow: 
-			0 8px 24px rgba(0, 0, 0, 0.4),
-			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		padding: 0;
+		box-shadow: none;
+		margin-bottom: 1rem;
 	}
 	
 	.stats-header {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.75rem;
 		margin-bottom: 1rem;
 		padding-bottom: 0.75rem;
-		border-bottom: 2px solid #334155;
-	}
-	
-	.stats-header-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
-		border: 2px solid #60a5fa;
-		border-radius: 6px;
-		font-family: 'Press Start 2P', monospace;
-		font-size: 0.35rem;
-		color: white;
-		text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+		border-bottom: 3px solid rgba(234, 179, 8, 0.5);
+		box-shadow: 0 1px 0 rgba(234, 179, 8, 0.2);
 	}
 	
 	.stats-header-text {
 		font-size: 0.625rem;
-		color: #e2e8f0;
+		color: #fbbf24;
+		font-weight: 700;
 		letter-spacing: 0.1em;
+		text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 	}
 	
 	.stats-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
+		gap: 1rem;
 	}
 	
 	.stat-item {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 0.5rem;
-		background: rgba(51, 65, 85, 0.3);
+		gap: 0.5rem;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.3);
+		border: 2px solid rgba(71, 85, 105, 0.5);
 		border-radius: 8px;
+		box-shadow: 
+			inset 0 1px 2px rgba(0, 0, 0, 0.3),
+			0 0 10px rgba(0, 0, 0, 0.2);
 	}
 	
 	.stat-label {
-		font-size: 0.5rem;
-		color: #64748b;
+		font-size: 0.625rem;
+		color: #cbd5e1;
+		font-weight: 600;
 		letter-spacing: 0.1em;
 	}
 	
@@ -1430,8 +1502,9 @@
 	
 	.stats-divider {
 		height: 2px;
-		background: linear-gradient(90deg, transparent 0%, #334155 50%, transparent 100%);
+		background: linear-gradient(90deg, transparent 0%, rgba(234, 179, 8, 0.5) 50%, transparent 100%);
 		margin: 0.75rem 0;
+		box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
 	}
 	
 	.stat-row {
@@ -1450,10 +1523,10 @@
 	/* Action Buttons */
 	.game-over-actions {
 		display: flex;
-		gap: 0.75rem;
+		gap: 1rem;
 		flex-wrap: wrap;
 		justify-content: center;
-		margin-top: 0.5rem;
+		margin-top: 0;
 	}
 	
 	.action-btn {
@@ -1464,7 +1537,7 @@
 		border: 3px solid transparent;
 		border-radius: 10px;
 		font-family: 'Press Start 2P', system-ui, monospace;
-		font-size: 0.5rem;
+		font-size: 0.625rem;
 		color: white;
 		cursor: pointer;
 		transition: all 0.2s ease;

@@ -20,7 +20,7 @@
 </script>
 
 <div class="w-full max-w-[200px]" bind:this={barRef}>
-	<div class="flex justify-between text-xs font-bold mb-1 uppercase tracking-wider text-gray-600">
+	<div class="flex justify-between text-xs font-bold mb-1 uppercase tracking-wider text-white" style="text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5), 0 0 10px rgba(234, 179, 8, 0.4);">
 		<span>{label}</span>
 		<span>{current}/{max}</span>
 	</div>

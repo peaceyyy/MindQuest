@@ -174,6 +174,11 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+		padding: 0.5rem;
+		background: rgba(0, 0, 0, 0.1);
+		border: 1px solid rgba(71, 85, 105, 0.3);
+		border-radius: 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 	
 	/* ========== HINTS DRAWER WRAPPER ========== */

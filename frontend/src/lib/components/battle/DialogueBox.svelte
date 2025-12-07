@@ -82,8 +82,8 @@
 			rgba(226, 232, 240, 0.98) 100%
 		);
 		border-radius: 8px;
-		padding: 16px 20px;
-		min-height: 80px;
+		padding: 20px 24px;
+		min-height: 100px;
 		max-height: 160px;
 		overflow-y: auto;
 		
@@ -95,7 +95,7 @@
 	
 	.dialogue-text {
 		font-size: 0.95rem;
-		line-height: 1.5;
+		line-height: 1.6;
 		font-weight: 500;
 		color: #1e293b;
 		white-space: pre-line;

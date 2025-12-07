@@ -1,5 +1,48 @@
 {
   "sets" : [ {
+    "id" : "7ce8e7d6-0df9-4a2a-9a61-7bec1784ac1c",
+    "name" : "Networking CCNA - Easy",
+    "topic" : "Networking CCNA",
+    "difficulty" : "easy",
+    "provider" : "gemini",
+    "createdAt" : 1765131008582,
+    "questions" : [ {
+      "questionText" : "Which layer of the OSI model is responsible for logical addressing (IP addresses)?",
+      "choices" : [ "Network Layer", "Data Link Layer", "Transport Layer", "Physical Layer" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_006",
+      "difficulty" : "Easy",
+      "topic" : "Networking CCNA"
+    }, {
+      "questionText" : "What is the primary function of a router?",
+      "choices" : [ "To forward data packets between different networks", "To connect devices within the same local network", "To convert digital signals to analog signals", "To provide power over Ethernet" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_007",
+      "difficulty" : "Easy",
+      "topic" : "Networking CCNA"
+    }, {
+      "questionText" : "Which of the following is a private IP address range?",
+      "choices" : [ "192.168.1.0/24", "8.8.8.8/32", "172.16.0.0/16", "203.0.113.1/32" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_008",
+      "difficulty" : "Easy",
+      "topic" : "Networking CCNA"
+    }, {
+      "questionText" : "What does the acronym 'LAN' stand for?",
+      "choices" : [ "Local Area Network", "Long Access Node", "Limited Access Network", "Logical Area Navigator" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_009",
+      "difficulty" : "Easy",
+      "topic" : "Networking CCNA"
+    }, {
+      "questionText" : "Which device operates at Layer 2 (Data Link Layer) of the OSI model and forwards frames based on MAC addresses?",
+      "choices" : [ "Switch", "Router", "Hub", "Repeater" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_010",
+      "difficulty" : "Easy",
+      "topic" : "Networking CCNA"
+    } ]
+  }, {
     "id" : "325fca73-4624-409c-92ac-d2ba0341e485",
     "name" : "Minecraft - Medium",
     "topic" : "Minecraft",

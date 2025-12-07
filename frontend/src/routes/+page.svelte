@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CustomQuestionsModal from '$lib/components/CustomQuestionsModal.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import { sounds, bgm } from '$lib/audio/SoundManager';
 	
 	let topic = $state('ai');
@@ -12,6 +13,7 @@
 	let devMode = $state(import.meta.env.DEV); // Only show dev tools in dev mode
 	let selectedCustomTopic = $state<string | null>(null); // Track selected custom topic
 	let pendingGeminiQuestions = $state<any[] | null>(null); // Store Gemini questions until game starts
+	let showResetConfirm = $state(false); // Show career points reset confirmation
 	
 	// Quick test files available in questions folder
 	const testFiles = [
@@ -40,12 +42,26 @@
 					globalPoints = state.globalPoints || 0;
 					return;
 				}
-			}
-			globalPoints = 0;
-		} catch (err) {
-			console.log('Could not load global points:', err);
-			globalPoints = 0;
 		}
+		globalPoints = 0;
+	} catch (err) {
+		console.log('Could not load global points:', err);
+		globalPoints = 0;
+	}
+}
+
+async function resetCareerPoints() {
+	try {
+			// Clear from localStorage
+			localStorage.removeItem('mindquest:careerPoints');
+			// Update display
+			globalPoints = 0;
+			console.log('[Home] Career points reset to 0');
+			sounds.play('select'); // Confirmation sound
+		} catch (err) {
+			console.error('Failed to reset career points:', err);
+		}
+		showResetConfirm = false;
 	}
 	
 	function startGame() {
@@ -224,12 +240,17 @@
 						</div>
 					</div>
 
-					<!-- Career points component (flex, modular) -->
+					<!-- Career points component (flex, modular, clickable for reset) -->
 					<div class="flex items-center justify-center">
-						<div class="flex flex-col items-center justify-center w-40 h-20 bg-black/40 border-4 border-yellow-400 rounded-lg px-4 py-2 shadow-lg shadow-yellow-400/50">
-							<div class="text-xs text-yellow-300 font-bold tracking-widest">CAREER POINTS</div>
-							<div class="text-2xl font-black text-yellow-400 font-mono">{globalPoints}</div>
-						</div>
+						<button
+							onclick={() => { playSelect(); showResetConfirm = true; }}
+							class="flex flex-col items-center justify-center w-40 h-20 bg-black/40 border-4 border-yellow-400 rounded-lg px-4 py-2 shadow-lg shadow-yellow-400/50 hover:bg-black/60 hover:border-yellow-300 transition-all cursor-pointer group"
+							title="Click to reset career points"
+						>
+							<div class="text-xs text-yellow-300 font-bold tracking-widest group-hover:text-yellow-200">CAREER POINTS</div>
+							<div class="text-2xl font-black text-yellow-400 font-mono group-hover:text-yellow-300">{globalPoints}</div>
+							<div class="text-[10px] text-yellow-500/60 mt-1 group-hover:text-yellow-400/80 transition-colors">Click to reset</div>
+						</button>
 					</div>
 
 					<!-- Start Button -->
@@ -276,6 +297,18 @@
 		ontopicselect={handleCustomTopicSelect}
 	/>
 {/if}
+
+<!-- Reset Career Points Confirmation -->
+<ConfirmDialog
+	open={showResetConfirm}
+	title="Reset Career Points?"
+	message="This will permanently reset your career points to 0. This action cannot be undone. Are you sure?"
+	confirmText="Reset to 0"
+	cancelText="Cancel"
+	isDangerous={true}
+	onConfirm={resetCareerPoints}
+	onCancel={() => showResetConfirm = false}
+/>
 
 <style>
 	.pixel-text {
