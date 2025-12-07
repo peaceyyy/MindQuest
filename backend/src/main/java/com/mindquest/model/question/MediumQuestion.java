@@ -14,8 +14,7 @@ public class MediumQuestion extends Question {
 
     @Override
     public int calculateDamage() {
-        // GOLDEN MEAN: Medium is balanced
-        // Fair damage for moderate difficulty content
+        // chakto lang: 
         return 25; // 40% mistake tolerance (2 mistakes allowed in 5 questions)
     }
 }

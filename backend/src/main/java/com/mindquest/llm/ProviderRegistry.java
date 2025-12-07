@@ -7,10 +7,6 @@ import java.util.stream.Collectors;
 
 /**
  * Registry for discovering and managing LLM provider factories.
- * Uses Java ServiceLoader to discover implementations at runtime.
- * 
- * This enables plug-and-play provider support: just add a new factory
- * implementation and register it via META-INF/services.
  */
 public class ProviderRegistry {
     
@@ -72,12 +68,6 @@ public class ProviderRegistry {
     
     /**
      * Creates a provider instance by ID.
-     * 
-     * @param providerId provider identifier (e.g., "gemini")
-     * @param apiKey API key or auth token (may be null for local providers)
-     * @param options provider-specific options (may be null for defaults)
-     * @return configured LlmProvider instance
-     * @throws LlmException if provider not found or creation fails
      */
     public LlmProvider createProvider(String providerId, String apiKey, ProviderOptions options) throws LlmException {
         LlmProviderFactory factory = factories.get(providerId);

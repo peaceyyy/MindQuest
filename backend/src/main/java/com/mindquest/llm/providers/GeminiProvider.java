@@ -23,10 +23,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * Gemini LLM provider using official Google GenAI SDK.
- * 
- * Uses the google-genai library for clean, production-ready API integration.
- * Supports automatic API key detection from GOOGLE_API_KEY environment variable.
- * Thread-safe with async support and request cancellation.
+
  * 
  * API Documentation: https://ai.google.dev/gemini-api/docs
  */

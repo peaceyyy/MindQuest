@@ -10,12 +10,7 @@ import com.mindquest.llm.prompts.PromptTemplates;
 
 /**
  * Test utility to verify Gemini returns properly formatted question JSON.
- * Run this BEFORE integrating into the game to ensure prompt templates work correctly.
  * 
- * Usage:
- *   1. Ensure .env has valid GEMINI_API_KEY
- *   2. Run: java -cp target/classes com.mindquest.llm.GeminiQuestionTest
- *   3. Verify JSON output matches expected structure
  */
 public class GeminiQuestionTest {
     

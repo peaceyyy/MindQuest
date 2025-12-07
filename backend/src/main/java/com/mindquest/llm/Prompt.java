@@ -6,7 +6,6 @@ import java.util.Objects;
 
 /**
  * Represents a prompt request sent to an LLM provider.
- * Immutable via builder pattern.
  */
 public final class Prompt {
     

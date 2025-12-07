@@ -56,7 +56,7 @@ public class InputHandler {
     }
 
     /**
-     * Read a menu choice, allowing an optional 'BACK' command.
+     * Read a menu choice, allowing 'BACK' command.
      * Returns null when the user typed BACK and allowBack is true.
      */
     public static Integer getMenuChoice(int min, int max, boolean allowBack) {

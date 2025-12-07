@@ -1,11 +1,5 @@
 /**
- * Battle Effects - GSAP-powered animations for combat feedback
- * 
- * Usage:
- *   import { screenShake, knockback, flashElement } from '$lib/animations/battleEffects';
- *   screenShake(containerEl);
- *   knockback(spriteEl, 'left');
- *   flashElement(spriteEl, 'red');
+ * Battle Effects - GSAP animations for combat 
  */
 
 import gsap from 'gsap';
@@ -97,7 +91,6 @@ export function flashElement(
 ): gsap.core.Tween | null {
 	if (!element) return null;
 
-	// Use CSS filter for tinting (works on images)
 	const filterMap: Record<string, string> = {
 		red: 'brightness(1.2) sepia(1) saturate(5) hue-rotate(-10deg)',
 		white: 'brightness(2) saturate(0)',

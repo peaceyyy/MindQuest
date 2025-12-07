@@ -877,7 +877,7 @@
 				</div>
 			{/if}
 			
-			<!-- Phase 1: Enemy sprite slides in -->
+		
 			{#if introPhase >= 1}
 				<div class="intro-sprite-container" class:visible={introPhase >= 1}>
 					<img 
@@ -889,7 +889,7 @@
 				</div>
 			{/if}
 			
-			<!-- Phase 2: Ready text -->
+		
 			{#if introPhase >= 2}
 				<div class="intro-ready" class:visible={introPhase >= 2}>
 					<span class="ready-text">GET READY!</span>
@@ -897,9 +897,9 @@
 			{/if}
 		</div>
 	{:else if roundComplete}
-		<!-- Game Over Screen - RPG Styled -->
+		<!-- Game Over Screen -->
 		<div class="game-over-screen">
-			<!-- Title Banner -->
+			
 			<div class="game-over-banner" class:victory={isVictory} class:defeat={!isVictory}>
 				{#if isVictory}
 					<h2 class="game-over-title victory-text">VICTORY!</h2>
@@ -910,15 +910,14 @@
 				{/if}
 			</div>
 			
-			<!-- Defeat Reason Badge -->
+			
 			{#if !isVictory && defeatReason}
 				<div class="defeat-reason-badge">
 					<span class="defeat-reason-icon">!</span>
 					<span class="defeat-reason-text">{getDefeatReasonMessage(defeatReason)}</span>
 				</div>
 			{/if}
-			
-			<!-- Stats Panel -->
+		
 			{#if roundSummary}
 				<div class="stats-panel">
 					<div class="stats-header">
@@ -1015,7 +1014,7 @@
 
 		
 
-		<!-- Enemy Zone (Top Right) -->
+	
 		<div class="flex justify-end items-center gap-4 p-4 mt-8">
 				<div class="text-right">
 					<h3 class="font-bold text-lg md:text-xl text-red-600 tracking-widest">{topic.toUpperCase()} BOSS</h3>
@@ -1024,7 +1023,7 @@
 				<Sprite src={enemySprite()} alt="{topic} Boss" isEnemy={true} bind:spriteRef={enemySpriteRef} />
 			</div>
 
-			<!-- Player Zone (Bottom Left) -->
+			
 			<div class="flex justify-start items-center gap-4 p-4 mt-auto mb-4">
 				<Sprite src={playerSprite} alt="Player" bind:spriteRef={playerSpriteRef} />
 				<div>
@@ -1032,7 +1031,7 @@
 					<HealthBar current={playerHP} max={playerMaxHP} label="HP" color="bg-green-500" bind:barRef={playerHpBarRef} />
 				</div>
 				
-				<!-- Live Accuracy Gauge -->
+		
 				{#if questionsAnswered > 0}
 					<!-- Streak indicators remain near the player but meter moved to UI panel -->
 					<div class="flex flex-col gap-2">
@@ -1067,7 +1066,7 @@
 	<!-- UI Zone -->
 	<div class="mt-2 pb-4">
 		<div class="grid grid-cols-1 lg:grid-cols-[1fr_12rem] items-start gap-3">
-			<!-- Main Content: Dialogue + Actions (Left, fixed grid column so width stays stable) -->
+			
 			<div class="w-full space-y-3">
 				<DialogueBox text={
 					feedback 
@@ -1103,7 +1102,7 @@
 				{/if}
 			</div>
 
-			<!-- Right Sidebar: Combined Stats & Items Panel  -->
+	
 			<div class="w-full lg:w-48 flex-shrink-0">
 				<BattleSidebar
 					currentAccuracy={currentAccuracy}
@@ -1663,7 +1662,7 @@
 		z-index: 3;
 		opacity: 0;
 		/* Offset upward so sprite sits above center text */
-		margin-top: -8rem;
+		margin-top: -3rem;
 	}
 	
 	.intro-sprite-container.visible {
@@ -1707,7 +1706,7 @@
 	/* Ready text */
 	.intro-ready {
 		position: absolute;
-		bottom: 20%;
+		top: calc(50% + 6rem);
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 4;

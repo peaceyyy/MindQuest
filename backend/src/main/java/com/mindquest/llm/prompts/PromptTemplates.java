@@ -5,19 +5,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 /**
- * Prompt templates for generating questions in the format expected by MindQuest.
- * Templates ensure LLM responses match the built-in JSON question structure.
+ * Prompt templates for generating questions in the format expected 
  */
 public class PromptTemplates {
     
     /**
      * Creates a prompt that instructs the LLM to generate questions in strict JSON format.
      * The JSON structure matches the built-in question files exactly.
-     * 
-     * @param topic The topic for questions (e.g., "Computer Science", "Philosophy")
-     * @param difficulty The difficulty level ("Easy", "Medium", "Hard")
-     * @param count Number of questions to generate
-     * @return Formatted prompt string
      */
     public static String generateQuestionsPrompt(String topic, String difficulty, int count) {
         return String.format(
@@ -88,10 +82,6 @@ public class PromptTemplates {
     /**
      * Post-processes LLM-generated question JSON to fix errors.
      * 
-     * Common issues fixed:
-     * - Too many choices (truncates to 4)
-     * - Too few choices (pads with placeholder)
-     * - Invalid correctIndex (Follows0-based Index)
      * 
      * @param questionJson The raw JSON from LLM
      * @return Sanitized JSON that matches expected format
@@ -123,7 +113,7 @@ public class PromptTemplates {
                         q.add("choices", fixed);
                         modified = true;
                         
-                        // Adjust correctIndex if it pointed to truncated choice
+                     
                         if (q.has("correctIndex")) {
                             int idx = q.get("correctIndex").getAsInt();
                             if (idx >= 4) {
@@ -131,7 +121,7 @@ public class PromptTemplates {
                             }
                         }
                     }
-                    // Fix: Too few choices (pad with placeholder)
+                  
                     else if (choices.size() < 4) {
                         while (choices.size() < 4) {
                             choices.add("Additional option");
@@ -140,7 +130,7 @@ public class PromptTemplates {
                     }
                 }
                 
-                // Fix: Invalid correctIndex
+             
                 if (q.has("correctIndex")) {
                     int idx = q.get("correctIndex").getAsInt();
                     if (idx < 0 || idx > 3) {
@@ -157,7 +147,7 @@ public class PromptTemplates {
             return gson.toJson(root);
             
         } catch (Exception e) {
-            // If sanitization fails, return original
+            
             System.err.println("[PromptTemplates] Sanitization failed: " + e.getMessage());
             return questionJson;
         }

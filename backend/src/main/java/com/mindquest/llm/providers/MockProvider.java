@@ -12,8 +12,7 @@ import java.util.concurrent.SubmissionPublisher;
 
 /**
  * Mock LLM provider for testing.
- * Returns canned responses without making real API calls.
- * Thread-safe with async support and request cancellation.
+
  */
 public class MockProvider implements LlmProvider {
     

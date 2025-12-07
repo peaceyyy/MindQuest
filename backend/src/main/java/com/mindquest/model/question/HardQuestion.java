@@ -14,8 +14,8 @@ public class HardQuestion extends Question {
 
     @Override
     public int calculateDamage() {
-        // FORGIVING MODEL: Hard questions are genuinely difficult
-        // Mistakes are understandable - lower punishment
+        // FORGIVING MODEL Hard questions are genuinely difficult
+       
         return 20; // 50% mistake tolerance (2-3 mistakes allowed in 5 questions)
     }
 }

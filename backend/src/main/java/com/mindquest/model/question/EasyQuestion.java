@@ -15,7 +15,7 @@ public class EasyQuestion extends Question {
     @Override
     public int calculateDamage() {
         // INVERTED MODEL: Easy questions are strict - high damage for mistakes
-        // You should know this! Mistakes on basics = harsh punishment
+    
         return 40; // 30% mistake tolerance (2.5 mistakes allowed in 5 questions)
     }
 }

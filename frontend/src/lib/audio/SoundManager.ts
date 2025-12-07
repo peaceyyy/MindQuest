@@ -54,7 +54,7 @@ const bgmRegistry: Record<string, string[]> = {
 	],
 	// Battle tracks per topic (indexed, expandable)
 	battle_ai: [
-		'bgm/main_menu_fukashigi.mp3',
+		'bgm/bg_1_Wild Pokemon Battle.mp3',
 	],
 	battle_cs: [
 		'bgm/bg_2_N_Battle.mp3',

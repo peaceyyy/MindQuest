@@ -203,7 +203,7 @@
 	
 	// Direct LM Studio test (bypasses Java backend)
 	// NOTE: This will likely fail due to CORS - browsers block cross-origin requests
-	// Use the /api/llm/* endpoints instead which go through the Java backend
+
 	async function testLmStudioDirect() {
 		localLlmLoading = true;
 		output = '⏳ Testing LM Studio directly at localhost:11434...\n⚠️ Note: This may fail due to CORS. Use the Java backend endpoints instead.';

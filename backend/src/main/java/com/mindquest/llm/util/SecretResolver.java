@@ -7,12 +7,7 @@ import java.util.*;
 /**
  * Resolves secrets (API keys, endpoints) from .env file or system environment.
  * 
- * Priority order:
- * 1. System environment variables
- * 2. .env file in project root
- * 3. User home directory .mindquest/credentials.properties
  * 
- * This class does NOT persist secrets - it only reads them.
  */
 public class SecretResolver {
     
@@ -134,8 +129,8 @@ public class SecretResolver {
         
         // Only load known LLM-related keys
         String[] llmKeys = {
-            "GOOGLE_API_KEY",      // Official SDK standard (recommended)
-            "GEMINI_API_KEY",      // Legacy support
+            "GOOGLE_API_KEY",  
+            "GEMINI_API_KEY",      
             "OPENAI_API_KEY",
             "LOCAL_LLM_ENDPOINT",
             "LOCAL_LLM_MODEL",
@@ -183,7 +178,7 @@ public class SecretResolver {
     
     /**
      * Gets the Gemini API key.
-     * Tries GOOGLE_API_KEY first (recommended), then falls back to legacy GEMINI_API_KEY.
+
      */
     public String getGeminiApiKey() {
         String key = getSecret("GOOGLE_API_KEY");

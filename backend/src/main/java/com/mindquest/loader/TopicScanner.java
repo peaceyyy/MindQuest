@@ -10,7 +10,6 @@ import java.util.*;
  * Scans external source directories (csv/ and xlsx/) to discover available topics.
  * Enables plug-and-play functionality: just add a file, and it appears in the menu.
  * 
- * Automatically detects JAR vs IDE environment:
  * - Development: Uses src/questions/external_source/...
  * - Production (JAR): Uses ./data/... (external to JAR)
  */

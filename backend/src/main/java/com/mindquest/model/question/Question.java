@@ -47,7 +47,7 @@ public abstract class Question {
         return topic;
     }
 
-    // Method to shuffle choices and update correctIndex
+    // shuffle choices and update correctIndex
     public void shuffleChoices() {
         String correctAnswer = choices.get(correctIndex);
         Collections.shuffle(choices);
