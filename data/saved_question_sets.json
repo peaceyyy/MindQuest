@@ -1,5 +1,48 @@
 {
   "sets" : [ {
+    "id" : "d4222670-c867-4edb-ae3a-67ba158481d3",
+    "name" : "CCna Networking II Final Exam - Easy",
+    "topic" : "CCna Networking II Final Exam",
+    "difficulty" : "easy",
+    "provider" : "gemini",
+    "createdAt" : 1765171526309,
+    "questions" : [ {
+      "questionText" : "Which layer of the OSI model is responsible for logical addressing (IP addresses)?",
+      "choices" : [ "Network Layer", "Data Link Layer", "Transport Layer", "Physical Layer" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_001",
+      "difficulty" : "Easy",
+      "topic" : "CCna Networking II Final Exam"
+    }, {
+      "questionText" : "What is the primary function of a router?",
+      "choices" : [ "Connect different networks and forward packets", "Connect devices within the same local network", "Convert analog signals to digital signals", "Provide power over Ethernet" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_002",
+      "difficulty" : "Easy",
+      "topic" : "CCna Networking II Final Exam"
+    }, {
+      "questionText" : "Which of the following is a common protocol used for reliable data transfer over the internet?",
+      "choices" : [ "TCP", "UDP", "ICMP", "ARP" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_003",
+      "difficulty" : "Easy",
+      "topic" : "CCna Networking II Final Exam"
+    }, {
+      "questionText" : "What does the acronym 'IP' stand for in networking?",
+      "choices" : [ "Internet Protocol", "Internal Packet", "Information Process", "Integrated Port" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_004",
+      "difficulty" : "Easy",
+      "topic" : "CCna Networking II Final Exam"
+    }, {
+      "questionText" : "Which device is used to connect multiple devices within the same local area network (LAN)?",
+      "choices" : [ "Switch", "Router", "Modem", "Firewall" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_005",
+      "difficulty" : "Easy",
+      "topic" : "CCna Networking II Final Exam"
+    } ]
+  }, {
     "id" : "7ce8e7d6-0df9-4a2a-9a61-7bec1784ac1c",
     "name" : "Networking CCNA - Easy",
     "topic" : "Networking CCNA",

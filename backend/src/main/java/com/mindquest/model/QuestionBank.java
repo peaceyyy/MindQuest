@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 public class QuestionBank {
+    // Map key separator constant
+    private static final String KEY_SEPARATOR = "_";
+    private static final String ID_FORMAT = "%s_%03d";
+    
     private Map<String, List<Question>> questionsByTopicAndDifficulty;
     private int csEasyCounter = 0;
     private int csMediumCounter = 0;
@@ -36,9 +40,9 @@ public class QuestionBank {
     }
 
     private String generateId(String topic, String difficulty) {
-        String prefix = topic.substring(0, Math.min(topic.length(), 2)).toUpperCase() + "_" + difficulty.toUpperCase().substring(0, Math.min(difficulty.length(), 4)).toUpperCase();
+        String prefix = topic.substring(0, Math.min(topic.length(), 2)).toUpperCase() + KEY_SEPARATOR + difficulty.toUpperCase().substring(0, Math.min(difficulty.length(), 4)).toUpperCase();
         int counter;
-        switch (topic + "_" + difficulty) {
+        switch (topic + KEY_SEPARATOR + difficulty) {
             case "Computer Science_Easy":
                 counter = ++csEasyCounter;
                 break;
@@ -69,7 +73,19 @@ public class QuestionBank {
             default:
                 counter = 0; // Should not happen
         }
-        return String.format("%s_%03d", prefix, counter);
+        return String.format(ID_FORMAT, prefix, counter);
+    }
+    
+    /**
+     * Creates a consistent map key from topic and difficulty.
+     * Centralizes key format to prevent string concatenation errors.
+     * 
+     * @param topic The question topic
+     * @param difficulty The difficulty level
+     * @return Formatted key string (e.g., "Computer Science_Easy")
+     */
+    private String createKey(String topic, String difficulty) {
+        return topic + KEY_SEPARATOR + difficulty;
     }
 
     public void loadDefaultQuestions() {
@@ -217,6 +233,6 @@ public class QuestionBank {
     }
 
     public List<Question> getQuestionsByTopicAndDifficulty(String topic, String difficulty) {
-        return questionsByTopicAndDifficulty.get(topic + "_" + difficulty);
+        return questionsByTopicAndDifficulty.get(createKey(topic, difficulty));
     }
 }

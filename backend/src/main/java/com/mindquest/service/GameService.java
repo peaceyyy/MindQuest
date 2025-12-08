@@ -7,6 +7,7 @@ import com.mindquest.model.game.Player;
 import com.mindquest.model.question.Question;
 import com.mindquest.service.dto.AnswerResult;
 import com.mindquest.service.dto.RoundSummary;
+import com.mindquest.service.scoring.DifficultyMultipliers;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +17,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class GameService {
+    // Game Balance Constants
+    private static final long CRITICAL_HIT_THRESHOLD_MS = 5000;
+    private static final int HOT_STREAK_THRESHOLD = 3;
+    private static final double HOT_STREAK_MULTIPLIER = 1.10;
+    private static final int PERFECT_FORM_STREAK_THRESHOLD = 5;
+    private static final int COUNTERATTACK_STREAK_THRESHOLD = 3;
+    private static final double COUNTERATTACK_DAMAGE_MULTIPLIER = 1.5;
+    private static final int FINAL_CHANCE_HP_RESTORE = 30;
+    
+    // Thread Pool Configuration
+    private static final int MIN_THREAD_POOL_SIZE = 2;
+    
     private final SessionManager sessionManager;
     private final Player player;
     private final QuestionBank questionBank;
@@ -35,7 +48,7 @@ public class GameService {
     
     private static final AtomicInteger poolThreadCounter = new AtomicInteger(1);
     private final ExecutorService backgroundPool = Executors.newFixedThreadPool(
-        Math.max(2, Runtime.getRuntime().availableProcessors()/2),
+        Math.max(MIN_THREAD_POOL_SIZE, Runtime.getRuntime().availableProcessors()/2),
         r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);
@@ -50,7 +63,22 @@ public class GameService {
         this.questionBank = questionBank;
     }
 
+    /**
+     * Starts a new game round with the specified topic and difficulty.
+     * Resets player stats, round statistics, and creates a snapshot for potential rollback.
+     * 
+     * @param topic The question topic (e.g., "Computer Science", "AI")
+     * @param difficulty The difficulty level ("Easy", "Medium", "Hard")
+     * @throws IllegalArgumentException if topic or difficulty is null or empty
+     */
     public void startNewRound(String topic, String difficulty) {
+        if (topic == null || topic.trim().isEmpty()) {
+            throw new IllegalArgumentException("Topic cannot be null or empty");
+        }
+        if (difficulty == null || difficulty.trim().isEmpty()) {
+            throw new IllegalArgumentException("Difficulty cannot be null or empty");
+        }
+        
         sessionManager.startNewRound(topic, difficulty);
  
         // Reset round statistics
@@ -69,8 +97,12 @@ public class GameService {
     }
     
     /**
-     * Starts a new round with pre-loaded questions (e.g., from Gemini AI).
+     * Starts a new round with pre-loaded questions (e.g., from AI generation).
      * Useful for testing LLM-generated questions without going through the QuestionBank.
+     * 
+     * @param topic The question topic for display purposes
+     * @param difficulty The difficulty level for hint allocation
+     * @param questions Pre-loaded list of Question objects to use for this round
      */
     public void startNewRoundWithQuestions(String topic, String difficulty, List<Question> questions) {
         sessionManager.startNewRoundWithQuestions(topic, difficulty, questions);
@@ -116,10 +148,20 @@ public class GameService {
         }
     }
 
+    /**
+     * Retrieves the current question in the active round.
+     * 
+     * @return The current Question object, or null if no round is active
+     */
     public Question getCurrentQuestion() {
         return sessionManager.getCurrentQuestion();
     }
 
+    /**
+     * Checks if there are remaining questions in the current round.
+     * 
+     * @return true if more questions are available, false otherwise
+     */
     public boolean hasMoreQuestions() {
         return sessionManager.hasMoreQuestions();
     }
@@ -132,6 +174,11 @@ public class GameService {
         return sessionManager.getGlobalPoints();
     }
 
+    /**
+     * Attempts to use a hint, eliminating wrong answer choices.
+     * 
+     * @return true if hint was successfully used, false if no hints remain
+     */
     public boolean useHint() {
         return player.useHint();
     }
@@ -149,7 +196,16 @@ public class GameService {
         player.restoreHint();
     }
 
-    
+    /**
+     * Evaluates a player's answer and calculates scoring with difficulty-based multipliers.
+     * Implements streak bonuses, critical hits, and counterattack mechanics.
+     * 
+     * @param question The question being answered
+     * @param answerIndex The player's selected answer (0-based index)
+     * @param isFinalChance Whether this is the player's second attempt after using a hint
+     * @param answerTimeMs Time taken to answer in milliseconds (null if not tracked)
+     * @return AnswerResult containing scoring, damage, HP changes, and special effect flags
+     */
     public AnswerResult evaluateAnswer(Question question, int answerIndex, boolean isFinalChance, Long answerTimeMs) {
         boolean correct = (answerIndex == question.getCorrectIndex());
         int pointsAwarded = 0;
@@ -159,7 +215,7 @@ public class GameService {
         boolean isHotStreak = false;
 
         // Check for critical hit (answer in less than 5 seconds)
-        if (correct && answerTimeMs != null && answerTimeMs < 5000) {
+        if (correct && answerTimeMs != null && answerTimeMs < CRITICAL_HIT_THRESHOLD_MS) {
             isCritical = true;
         }
 
@@ -183,41 +239,41 @@ public class GameService {
             pointsAwarded = question.calculateScore();
             
             // Apply difficulty XP multiplier (Easy: 1.0×, Medium: 1.5×, Hard: 2.5×)
-            double xpMultiplier = getDifficultyXpMultiplier(question.getDifficulty());
+            double xpMultiplier = DifficultyMultipliers.getXpMultiplier(question.getDifficulty());
             pointsAwarded = (int) Math.round(pointsAwarded * xpMultiplier);
             
             // INVERTED CRIT BONUSES: Easy 5%, Medium 15%, Hard 25%
             if (isCritical) {
-                double critMultiplier = getCritMultiplier(question.getDifficulty());
+                double critMultiplier = DifficultyMultipliers.getCritMultiplier(question.getDifficulty());
                 pointsAwarded = (int) Math.round(pointsAwarded * critMultiplier);
             }
             
             // HOT STREAK BONUS: 3 correct answers in a row = +10% XP
-            if (correctStreak >= 3) {
+            if (correctStreak >= HOT_STREAK_THRESHOLD) {
                 isHotStreak = true;
-                pointsAwarded = (int) Math.round(pointsAwarded * 1.10);
+                pointsAwarded = (int) Math.round(pointsAwarded * HOT_STREAK_MULTIPLIER);
             }
             
             player.addScore(pointsAwarded);
-            if (correctStreak >= 5) {
+            if (correctStreak >= PERFECT_FORM_STREAK_THRESHOLD) {
                 // "Perfect Form!" - Full HP restore at 5 correct streak
                 player.restoreHp(player.getMaxHp());
-            } else if (correctStreak >= 3) {
+            } else if (correctStreak >= HOT_STREAK_THRESHOLD) {
                 // "Hot Streak!" - +10% XP bonus at 3 correct streak
-                pointsAwarded = (int) Math.round(pointsAwarded * 1.10);
+                pointsAwarded = (int) Math.round(pointsAwarded * HOT_STREAK_MULTIPLIER);
             }
             
             player.addScore(pointsAwarded);
             if (isFinalChance) {
-                player.restoreHp(30);
+                player.restoreHp(FINAL_CHANCE_HP_RESTORE);
             }
         } else {
             damageTaken = question.calculateDamage();
             
             // Check for 3-wrong streak: Apply critical damage from enemy
-            if (wrongStreak >= 3) {
+            if (wrongStreak >= COUNTERATTACK_STREAK_THRESHOLD) {
                 // Boss counterattack! 1.5x damage on 3rd consecutive mistake
-                damageTaken = (int) Math.round(damageTaken * 1.5);
+                damageTaken = (int) Math.round(damageTaken * COUNTERATTACK_DAMAGE_MULTIPLIER);
                 isCounterattack = true;
                 // Reset streak after delivering critical damage
                 wrongStreak = 0;
@@ -248,51 +304,13 @@ public class GameService {
             isHotStreak
         );
     }
-    
-    /**
-     * Get critical hit multiplier based on difficulty.
-     * Easy: 1.05 (5% bonus - minimal reward for speed on simple questions)
-     * Medium: 1.15 (15% bonus - current baseline)
-     * Hard: 1.25 (25% bonus - reward careful, fast reading on difficult content)
-     */
-    private double getCritMultiplier(String difficulty) {
-        if (difficulty == null) return 1.15; // Default to medium
-        
-        switch (difficulty.toLowerCase()) {
-            case "easy":
-                return 1.05;
-            case "medium":
-                return 1.15;
-            case "hard":
-                return 1.25;
-            default:
-                return 1.15;
-        }
-    }
-    
-    /**
-     * Get XP multiplier based on difficulty.
-     * Easy: 1.0× (baseline - fundamentals)
-     * Medium: 1.5× (moderate reward)
-     * Hard: 2.5× (high reward for mastering difficult content)
-     */
-    private double getDifficultyXpMultiplier(String difficulty) {
-        if (difficulty == null) return 1.0; // Default to easy
-        
-        switch (difficulty.toLowerCase()) {
-            case "easy":
-                return 1.0;
-            case "medium":
-                return 1.5;
-            case "hard":
-                return 2.5;
-            default:
-                return 1.0;
-        }
-    }
 
     /**
-     * Compute round summary on success (when HP > 0 at end of round).
+     * Calculates round completion summary and awards bonus points.
+     * Applies HP-based bonus (50% of remaining HP), updates global points,
+     * and compiles accuracy statistics.
+     * 
+     * @return RoundSummary containing HP bonus, total score, accuracy, and timing statistics
      */
     public RoundSummary completeRoundAndSummarize() {
         int hpBonus = (int) (player.getHp() * 0.5);

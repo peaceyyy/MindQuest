@@ -922,60 +922,46 @@
 		
 			<!-- Card 2: Stats and Actions -->
 			<div class="game-over-card">
-				{#if roundSummary}
-					<div class="stats-panel">
-						<div class="stats-header">
-							<h3 class="stats-header-text">ROUND STATISTICS</h3>
+				<div class="stats-panel">
+					<div class="stats-header">
+						<h3 class="stats-header-text">ROUND STATISTICS</h3>
+					</div>
+					
+					<div class="stats-grid">
+						<div class="stat-item">
+							<span class="stat-label">QUESTIONS</span>
+							<span class="stat-value stat-blue">{roundSummary?.totalQuestions ?? questionsAnswered}</span>
 						</div>
-						
-						<div class="stats-grid">
-							<div class="stat-item">
-								<span class="stat-label">QUESTIONS</span>
-								<span class="stat-value stat-blue">{roundSummary.totalQuestions}</span>
-							</div>
-							<div class="stat-item">
-								<span class="stat-label">ACCURACY</span>
-								<span class="stat-value" class:stat-green={roundSummary.accuracyPercentage >= 60} class:stat-red={roundSummary.accuracyPercentage < 60}>
-									{roundSummary.accuracyPercentage.toFixed(1)}%
-								</span>
-							</div>
-							<div class="stat-item">
-								<span class="stat-label">CORRECT</span>
-								<span class="stat-value stat-green">{roundSummary.correctAnswers}</span>
-							</div>
-							<div class="stat-item">
-								<span class="stat-label">MISSES</span>
-								<span class="stat-value stat-red">{roundSummary.incorrectAnswers}</span>
-							</div>
+						<div class="stat-item">
+							<span class="stat-label">ACCURACY</span>
+							<span class="stat-value" class:stat-green={currentAccuracy >= 60} class:stat-red={currentAccuracy < 60}>
+								{roundSummary ? roundSummary.accuracyPercentage.toFixed(1) : currentAccuracy.toFixed(1)}%
+							</span>
 						</div>
-						
-						{#if roundSummary.averageAnswerTimeMs > 0}
-							<div class="stats-divider"></div>
-							<div class="stat-row">
-								<span class="stat-label">AVG TIME</span>
-								<span class="stat-value stat-purple">{(roundSummary.averageAnswerTimeMs / 1000).toFixed(1)}s</span>
-							</div>
-						{/if}
-						
+						<div class="stat-item">
+							<span class="stat-label">CORRECT</span>
+							<span class="stat-value stat-green">{roundSummary?.correctAnswers ?? correctAnswers}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-label">MISSES</span>
+							<span class="stat-value stat-red">{roundSummary?.incorrectAnswers ?? incorrectAnswers}</span>
+						</div>
+					</div>
+					
+					{#if (roundSummary?.averageAnswerTimeMs ?? 0) > 0}
 						<div class="stats-divider"></div>
-						<div class="stat-row stat-highlight">
-							<span class="stat-label">POINTS EARNED</span>
-							<span class="stat-value stat-gold">{totalPoints}</span>
-						</div>
-					</div>
-				{:else}
-					<!-- Fallback Stats -->
-					<div class="stats-panel">
 						<div class="stat-row">
-							<span class="stat-label">TOTAL POINTS</span>
-							<span class="stat-value stat-blue">{totalPoints}</span>
+							<span class="stat-label">AVG TIME</span>
+							<span class="stat-value stat-purple">{((roundSummary?.averageAnswerTimeMs ?? 0) / 1000).toFixed(1)}s</span>
 						</div>
-						<div class="stat-row">
-							<span class="stat-label">ANSWERED</span>
-							<span class="stat-value stat-gray">{questionsAnswered}</span>
-						</div>
+					{/if}
+					
+					<div class="stats-divider"></div>
+					<div class="stat-row stat-highlight">
+						<span class="stat-label">POINTS EARNED</span>
+						<span class="stat-value stat-gold">{totalPoints}</span>
 					</div>
-				{/if}
+				</div>
 				
 				<!-- Action Buttons -->
 				<div class="game-over-actions">

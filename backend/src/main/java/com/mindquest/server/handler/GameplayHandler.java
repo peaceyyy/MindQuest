@@ -25,6 +25,8 @@ import java.util.Map;
  * Manages round start, questions, answers, and hints.
  */
 public class GameplayHandler {
+    
+    private static final String INLINE_QUESTION_ID_PREFIX = "gemini-";
 
     private final SessionRegistry sessionRegistry;
 
@@ -62,7 +64,7 @@ public class GameplayHandler {
             for (int i = 0; i < req.questions.size(); i++) {
                 InlineQuestion iq = req.questions.get(i);
                 Question q = QuestionFactory.createForDifficulty(
-                    "gemini-" + i,
+                    INLINE_QUESTION_ID_PREFIX + i,
                     iq.questionText,
                     iq.choices,
                     iq.correctIndex,

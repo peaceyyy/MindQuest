@@ -17,50 +17,89 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 
 public class SessionManager {
+    private static final int DEFAULT_QUESTIONS_PER_ROUND = 5;
+    
     private final Player player;
     private final QuestionBank questionBank;
     
     // Thread-safe state container
     private final AtomicReference<SessionState> state;
 
-  
-    private static class SessionState {
-        final List<Question> currentRoundQuestions;
-        final Set<String> usedQuestionIds;
-        final String currentTopic;
-        final String currentDifficulty;
-        final int currentQuestionIndex;
-        final int globalPoints;
-        final SourceConfig sourceConfig;
-
-        SessionState() {
-            this(Collections.emptyList(), new HashSet<>(), null, null, 0, 0, null);
-        }
-
-        SessionState(List<Question> questions, Set<String> usedIds, String topic, String diff, int index, int points, SourceConfig config) {
-            this.currentRoundQuestions = questions != null ? Collections.unmodifiableList(new ArrayList<>(questions)) : Collections.emptyList();
-            this.usedQuestionIds = usedIds != null ? Collections.unmodifiableSet(new HashSet<>(usedIds)) : Collections.emptySet();
-            this.currentTopic = topic;
-            this.currentDifficulty = diff;
-            this.currentQuestionIndex = index;
-            this.globalPoints = points;
-            this.sourceConfig = config;
+    /**
+     * Immutable snapshot of session state for thread-safe updates.
+     * Uses Java 17 record for concise immutable data modeling with automatic
+     * equals(), hashCode(), and toString() implementations.
+     */
+    private record SessionState(
+        List<Question> currentRoundQuestions,
+        Set<String> usedQuestionIds,
+        String currentTopic,
+        String currentDifficulty,
+        int currentQuestionIndex,
+        int globalPoints,
+        SourceConfig sourceConfig
+    ) {
+        /**
+         * Compact constructor with defensive copying to ensure immutability.
+         * Prevents external modification of mutable collections.
+         */
+        SessionState {
+            currentRoundQuestions = currentRoundQuestions != null 
+                ? Collections.unmodifiableList(new ArrayList<>(currentRoundQuestions))
+                : Collections.emptyList();
+            usedQuestionIds = usedQuestionIds != null
+                ? Collections.unmodifiableSet(new HashSet<>(usedQuestionIds))
+                : Collections.emptySet();
         }
         
-        // Helper to create a new state with updated config
+        /**
+         * Factory method for creating an empty initial state.
+         * 
+         * @return A new SessionState with default values
+         */
+        static SessionState empty() {
+            return new SessionState(
+                Collections.emptyList(), 
+                new HashSet<>(), 
+                null, 
+                null, 
+                0, 
+                0, 
+                null
+            );
+        }
+        
+        /**
+         * Creates a new state with updated source configuration.
+         * Demonstrates immutability pattern - returns new instance rather than mutating.
+         * 
+         * @param newConfig The new source configuration
+         * @return A new SessionState with updated config
+         */
         SessionState withConfig(SourceConfig newConfig) {
-            return new SessionState(currentRoundQuestions, usedQuestionIds, currentTopic, currentDifficulty, currentQuestionIndex, globalPoints, newConfig);
+            return new SessionState(
+                currentRoundQuestions, 
+                usedQuestionIds, 
+                currentTopic, 
+                currentDifficulty, 
+                currentQuestionIndex, 
+                globalPoints, 
+                newConfig
+            );
         }
     }
 
     public SessionManager(Player player, QuestionBank questionBank) {
         this.player = player;
         this.questionBank = questionBank;
-        this.state = new AtomicReference<>(new SessionState());
+        this.state = new AtomicReference<>(SessionState.empty());
     }
     
     /**
      * Sets the question source configuration for this session.
+     * Allows switching between built-in, JSON, CSV, or Excel question sources.
+     * 
+     * @param config The source configuration to use
      */
     public void setSourceConfig(SourceConfig config) {
         state.updateAndGet(s -> s.withConfig(config));
@@ -73,6 +112,13 @@ public class SessionManager {
         return state.get().sourceConfig;
     }
 
+    /**
+     * Starts a new round with questions from the specified topic and difficulty.
+     * Resets player stats, loads fresh questions, and shuffles them.
+     * 
+     * @param topic The question topic (e.g., "Computer Science")
+     * @param difficulty The difficulty level ("Easy", "Medium", "Hard")
+     */
     public void startNewRound(String topic, String difficulty) {
         // Reset player for round (Note: Player is not thread-safe, assuming single-user session or external sync)
         player.resetForRound();
@@ -239,10 +285,15 @@ public class SessionManager {
 
         Collections.shuffle(freshQuestions);
         
-        int count = Math.min(5, freshQuestions.size());
+        int count = Math.min(DEFAULT_QUESTIONS_PER_ROUND, freshQuestions.size());
         return freshQuestions.subList(0, count);
     }
 
+    /**
+     * Retrieves the current question in the active round.
+     * 
+     * @return The current Question object, or null if round is complete or not started
+     */
     public Question getCurrentQuestion() {
         SessionState s = state.get();
         if (s.currentQuestionIndex < s.currentRoundQuestions.size()) {
@@ -251,6 +302,10 @@ public class SessionManager {
         return null;
     }
 
+    /**
+     * Advances to the next question in the current round.
+     * Thread-safe operation using atomic state update.
+     */
     public void moveToNextQuestion() {
         state.updateAndGet(s -> new SessionState(
             s.currentRoundQuestions,
@@ -263,6 +318,11 @@ public class SessionManager {
         ));
     }
 
+    /**
+     * Checks if there are remaining questions in the current round.
+     * 
+     * @return true if more questions are available, false otherwise
+     */
     public boolean hasMoreQuestions() {
         SessionState s = state.get();
         return s.currentQuestionIndex < s.currentRoundQuestions.size();
@@ -276,11 +336,26 @@ public class SessionManager {
         return state.get().currentDifficulty;
     }
 
+    /**
+     * Retrieves the accumulated global points across all rounds.
+     * 
+     * @return The total career points earned
+     */
     public int getGlobalPoints() {
         return state.get().globalPoints;
     }
 
+    /**
+     * Adds points to the global career points total.
+     * 
+     * @param points The points to add (must be non-negative)
+     * @throws IllegalArgumentException if points is negative
+     */
     public void addToGlobalPoints(int points) {
+        if (points < 0) {
+            throw new IllegalArgumentException("Cannot add negative points: " + points);
+        }
+        
         state.updateAndGet(s -> new SessionState(
             s.currentRoundQuestions,
             s.usedQuestionIds,
@@ -294,10 +369,15 @@ public class SessionManager {
 
     public void resetSession() {
         player.resetForRound(); // Note: Player reset might need its own sync if shared
-        state.set(new SessionState());
+        state.set(SessionState.empty());
     }
 
-   
+    /**
+     * Gets the total number of questions in the current round.
+     * Used for calculating accuracy statistics.
+     * 
+     * @return The question count for the active round
+     */
     public int getCurrentRoundQuestionCount() {
         return state.get().currentRoundQuestions.size();
     }
