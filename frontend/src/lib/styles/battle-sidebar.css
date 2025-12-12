@@ -14,18 +14,22 @@
 	border: 1px solid var(--color-slate-600-alpha);
 	border-radius: var(--radius-lg);
 	box-shadow: var(--drop-shadow-md);
-	overflow: hidden;
+	/* allow expanding drawers to overflow the sidebar and sit above the battle area */
+	overflow: visible;
 }
 
 /* ========== HINTS DRAWER ========== */
 .hints-drawer-wrapper {
 	position: relative;
-	z-index: 10;
+	/* increase wrapper stacking so expanded drawer can layer above battle elements */
+	z-index: 50;
 }
 
 /* Floating content - expands upward above handle */
 .hints-drawer-content {
 	position: absolute;
+	/* make sure drawer appears above battle sprites and panels */
+	z-index: 60;
 	bottom: 100%;
 	left: 0;
 	right: 0;
@@ -37,14 +41,32 @@
 	box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 	opacity: 0;
 	visibility: hidden;
-	transform: translateY(10px);
-	transition: all var(--transition-normal) ease;
+	transform: translateY(20px) scaleY(0.8);
+	transform-origin: bottom center;
+	transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .hints-drawer-content.expanded {
 	opacity: 1;
 	visibility: visible;
-	transform: translateY(0);
+	transform: translateY(0) scaleY(1);
+	box-shadow: 
+		0 -4px 12px rgba(0, 0, 0, 0.3),
+		0 -8px 32px rgba(0, 0, 0, 0.2),
+		0 0 0 1px rgba(251, 191, 36, 0.1);
+	animation: drawer-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes drawer-pop {
+	0% {
+		transform: translateY(20px) scaleY(0.8);
+	}
+	60% {
+		transform: translateY(-3px) scaleY(1.02);
+	}
+	100% {
+		transform: translateY(0) scaleY(1);
+	}
 }
 
 /* Drawer handle/tab */
@@ -57,12 +79,38 @@
 	border: 2px solid var(--color-slate-600-alpha);
 	border-radius: var(--radius-lg);
 	cursor: pointer;
-	transition: all var(--transition-normal);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	box-shadow: var(--drop-shadow-lg);
+	position: relative;
+	overflow: hidden;
+}
+
+.hints-drawer-handle::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.1), transparent);
+	transition: left 0.5s ease;
+}
+
+.hints-drawer-handle:hover::before {
+	left: 100%;
 }
 
 .hints-drawer-handle:hover {
 	background: var(--bg-card-secondary);
+	transform: translateY(-1px);
+	box-shadow: var(--drop-shadow-lg), 0 2px 8px rgba(251, 191, 36, 0.1);
+}
+
+/* Connected state when expanded */
+.hints-drawer-handle.connected {
+	border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+	border-top-color: transparent;
+	box-shadow: var(--drop-shadow-lg);
 }
 
 .hints-handle-icon {
@@ -96,11 +144,12 @@
 .hints-handle-arrow {
 	font-size: var(--text-xs);
 	color: var(--color-slate-600);
-	transition: transform var(--transition-slow) ease;
+	transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .hints-handle-arrow.expanded {
-	transform: rotate(180deg);
+	transform: rotate(180deg) scale(1.1);
+	color: var(--color-gold);
 }
 
 /* Hint orbs */

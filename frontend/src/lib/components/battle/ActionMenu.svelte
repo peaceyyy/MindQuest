@@ -19,9 +19,7 @@
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 		{#each choices as choice, index}
 			{@const isEliminated = eliminatedChoices.includes(index)}
-			{#if isEliminated}
-				{@const debugLog = console.log(`[ActionMenu] Choice ${index} is eliminated`)}
-			{/if}
+			
 			<button
 				class="choice-button"
 				class:eliminated={isEliminated}
@@ -62,7 +60,8 @@
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-md);
-		padding: var(--spacing-lg) var(--spacing-xl);
+		padding: 1.25rem 1.25rem;
+		min-height: 90px;
 		background: var(--bg-card-primary);
 		border: 3px solid var(--color-slate-600);
 		border-radius: var(--radius-lg);

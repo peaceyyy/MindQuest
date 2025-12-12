@@ -103,7 +103,7 @@
 		</div>
 		
 		<!-- Drawer handle/tab (fixed position, always at same spot) -->
-		<button class="hints-drawer-handle" onclick={toggleHints}>
+		<button class="hints-drawer-handle" class:connected={hintsExpanded} onclick={toggleHints}>
 			<span class="hints-handle-icon">🎒</span>
 			<span class="hints-handle-title">HINTS</span>
 			<span class="hints-handle-count" class:has-hints={hints > 0}>{hints}/{maxHints}</span>

@@ -24,7 +24,7 @@
 	.dialogue-box {
 		position: relative;
 		filter: var(--drop-shadow-lg);
-		margin-bottom: var(--spacing-lg);
+		margin-bottom: var(--spacing-sm);
 		animation: dialogue-entrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 	
@@ -112,9 +112,9 @@
 	.dialogue-content {
 		background: var(--bg-light);
 		border-radius: var(--radius-md);
-		padding: var(--spacing-xl) var(--spacing-2xl);
-		min-height: 100px;
-		max-height: 160px;
+		padding: var(--spacing-lg) var(--spacing-xl);
+		min-height: 110px;
+		max-height: 120px;
 		overflow-y: auto;
 		
 		/* Inner shadow for depth */
