@@ -5,9 +5,6 @@ import com.mindquest.llm.exception.LlmException;
 import com.mindquest.llm.util.SecretResolver;
 
 /**
- * Factory for creating LocalLlmProvider instances.
- * Registered via ServiceLoader (SPI) in META-INF/services.
- * 
  * Configuration is read from:
  * 1. ProviderOptions passed at creation time
  * 2. Environment variables / .env file (via SecretResolver)

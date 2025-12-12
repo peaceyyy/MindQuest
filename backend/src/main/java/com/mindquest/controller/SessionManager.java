@@ -22,14 +22,7 @@ public class SessionManager {
     private final Player player;
     private final QuestionBank questionBank;
     
-    // Thread-safe state container
     private final AtomicReference<SessionState> state;
-
-    /**
-     * Immutable snapshot of session state for thread-safe updates.
-     * Uses Java 17 record for concise immutable data modeling with automatic
-     * equals(), hashCode(), and toString() implementations.
-     */
     private record SessionState(
         List<Question> currentRoundQuestions,
         Set<String> usedQuestionIds,
@@ -70,9 +63,6 @@ public class SessionManager {
         }
         
         /**
-         * Creates a new state with updated source configuration.
-         * Demonstrates immutability pattern - returns new instance rather than mutating.
-         * 
          * @param newConfig The new source configuration
          * @return A new SessionState with updated config
          */

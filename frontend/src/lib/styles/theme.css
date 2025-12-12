@@ -1,0 +1,305 @@
+/**
+ * MindQuest Theme - Shared Design Tokens
+ * RPG-styled battle game with retro Nintendo DS aesthetic
+ */
+
+:root {
+	/* ===== Color Palette ===== */
+	
+	/* Primary Colors - Battle UI */
+	--color-player-primary: #3b82f6;
+	--color-player-secondary: #2563eb;
+	--color-player-dark: #1d4ed8;
+	--color-player-hp: #22c55e;
+	
+	--color-enemy-primary: #ef4444;
+	--color-enemy-secondary: #dc2626;
+	--color-enemy-hp: #ef4444;
+	
+	/* Gold/Yellow Accents */
+	--color-gold: #fbbf24;
+	--color-gold-light: #fde047;
+	--color-gold-dark: #f59e0b;
+	--color-gold-darker: #d97706;
+	
+	/* Status Colors */
+	--color-success: #22c55e;
+	--color-warning: #f59e0b;
+	--color-danger: #ef4444;
+	--color-info: #3b82f6;
+	
+	/* Neutral Colors */
+	--color-slate-50: #f8fafc;
+	--color-slate-100: #f1f5f9;
+	--color-slate-300: #cbd5e1;
+	--color-slate-400: #94a3b8;
+	--color-slate-600: #475569;
+	--color-slate-700: #334155;
+	--color-slate-800: #1e293b;
+	--color-slate-900: #0f172a;
+	
+	/* Alpha versions for overlays */
+	--color-slate-50-alpha: rgba(248, 250, 252, 0.5);
+	--color-slate-300-alpha: rgba(148, 163, 184, 0.3);
+	--color-slate-600-alpha: rgba(71, 85, 105, 0.5);
+	--color-slate-700-alpha: rgba(51, 65, 85, 0.5);
+	
+	/* Purple Accents (for hints/special) */
+	--color-purple-400: #a78bfa;
+	--color-purple-500: #8b5cf6;
+	--color-purple-600: #7c3aed;
+	
+	/* ===== Backgrounds ===== */
+	
+	/* Card backgrounds - Dark matte with subtle gradients */
+	--bg-card-primary: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+	--bg-card-secondary: linear-gradient(180deg, rgba(30, 30, 36, 0.95) 0%, rgba(20, 20, 26, 0.98) 100%);
+	
+	/* Light backgrounds */
+	--bg-light: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(226, 232, 240, 0.98) 100%);
+	
+	/* Special panel backgrounds */
+	--bg-hint-panel: linear-gradient(180deg, rgba(49, 46, 129, 0.95) 0%, rgba(30, 27, 75, 0.95) 50%, rgba(49, 46, 129, 0.95) 100%);
+	
+	/* Border effects */
+	--bg-border-shimmer: linear-gradient(135deg, rgba(148, 163, 184, 0.6) 0%, rgba(71, 85, 105, 0.4) 50%, rgba(148, 163, 184, 0.6) 100%);
+	
+	/* Scrollbar */
+	--bg-scrollbar: linear-gradient(180deg, #64748b 0%, #475569 100%);
+	--bg-scrollbar-hover: linear-gradient(180deg, #475569 0%, #334155 100%);
+	
+	/* Battle backgrounds */
+	--bg-battle-primary: linear-gradient(to bottom, #312e81 0%, #581c87 50%, #0f172a 100%);
+	--bg-battle-secondary: #1a1a2e;
+	
+	/* Button gradients */
+	--bg-button-primary: linear-gradient(180deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+	--bg-button-success: linear-gradient(180deg, #22c55e 0%, #16a34a 50%, #15803d 100%);
+	--bg-button-danger: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+	--bg-button-gold: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+	--bg-button-danger-dark: linear-gradient(180deg, rgba(127, 29, 29, 0.6) 0%, rgba(153, 27, 27, 0.8) 100%);
+	--bg-button-danger-dark-hover: linear-gradient(180deg, rgba(153, 27, 27, 0.8) 0%, rgba(185, 28, 28, 0.9) 100%);
+	
+	/* Gold gradient - for borders and accents */
+	--gold-gradient: linear-gradient(135deg, rgba(234, 179, 8, 0.4) 0%, rgba(202, 138, 4, 0.3) 25%, rgba(161, 98, 7, 0.2) 50%, rgba(202, 138, 4, 0.3) 75%, rgba(234, 179, 8, 0.4) 100%);
+	
+	/* Overlay gradients */
+	--overlay-light: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+	--overlay-dark: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+	
+	/* ===== Shadows ===== */
+	
+	/* Card shadows - RPG-style with golden glow */
+	--card-shadow: 
+		0 0 0 3px rgba(234, 179, 8, 0.5),
+		0 0 20px rgba(234, 179, 8, 0.15),
+		0 0 40px rgba(234, 179, 8, 0.08),
+		inset 0 1px 2px rgba(0, 0, 0, 0.5),
+		inset 0 -1px 0 rgba(234, 179, 8, 0.05);
+	
+	--card-shadow-hover: 
+		0 0 0 3px rgba(234, 179, 8, 0.7),
+		0 0 30px rgba(234, 179, 8, 0.25),
+		0 0 50px rgba(234, 179, 8, 0.12),
+		inset 0 1px 2px rgba(0, 0, 0, 0.5),
+		inset 0 -1px 0 rgba(234, 179, 8, 0.08);
+	
+	/* Button shadows */
+	--button-shadow-primary: 
+		0 0 0 2px rgba(96, 165, 250, 0.5),
+		0 0 20px rgba(59, 130, 246, 0.3),
+		0 6px 20px rgba(0, 0, 0, 0.3),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	
+	--button-shadow-primary-hover: 
+		0 0 0 2px rgba(96, 165, 250, 0.7),
+		0 0 30px rgba(59, 130, 246, 0.5),
+		0 8px 24px rgba(0, 0, 0, 0.3),
+		inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	
+	/* Drop shadows for sprites and elements */
+	--drop-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+	--drop-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+	--drop-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+	
+	/* Glow effects */
+	--glow-gold: 0 0 20px rgba(251, 191, 36, 0.4);
+	--glow-gold-strong: 0 0 30px rgba(251, 191, 36, 0.6);
+	--glow-red: 0 0 20px rgba(239, 68, 68, 0.5);
+	--glow-red-subtle: 0 0 20px rgba(239, 68, 68, 0.15);
+	--glow-green: 0 0 20px rgba(34, 197, 94, 0.5);
+	--glow-blue: 0 0 20px rgba(59, 130, 246, 0.5);
+	--glow-blue-subtle: 0 0 20px rgba(59, 130, 246, 0.15);
+	--glow-purple: 0 0 20px rgba(139, 92, 246, 0.5);
+	
+	/* ===== Text Shadows ===== */
+	
+	/* Retro pixel text shadows */
+	--text-shadow-pixel: 
+		3px 3px 0 #000,
+		-1px -1px 0 #000,
+		1px -1px 0 #000,
+		-1px 1px 0 #000;
+	
+	--text-shadow-pixel-large: 
+		4px 4px 0 #000,
+		-2px -2px 0 #000,
+		2px -2px 0 #000,
+		-2px 2px 0 #000;
+	
+	/* Glow text shadows */
+	--text-shadow-glow-gold: 0 0 10px rgba(251, 191, 36, 0.5);
+	--text-shadow-glow-gold-strong: 0 0 30px rgba(251, 191, 36, 0.6);
+	--text-shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.5);
+	--text-shadow-glow-green: 0 0 20px rgba(34, 197, 94, 0.6);
+	
+	/* Combined shadows */
+	--text-shadow-title-victory: 
+		3px 3px 0 rgba(0, 0, 0, 0.4),
+		0 0 30px rgba(34, 197, 94, 0.6);
+	
+	--text-shadow-title-defeat: 
+		3px 3px 0 rgba(0, 0, 0, 0.4),
+		0 0 30px rgba(239, 68, 68, 0.6);
+	
+	--text-shadow-standard: 0 2px 4px rgba(0, 0, 0, 0.3);
+	
+	/* ===== Spacing & Sizing ===== */
+	
+	--spacing-xs: 0.25rem;
+	--spacing-sm: 0.5rem;
+	--spacing-md: 0.75rem;
+	--spacing-lg: 1rem;
+	--spacing-xl: 1.5rem;
+	--spacing-2xl: 2rem;
+	
+	/* Border radius */
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	
+	/* ===== Typography ===== */
+	
+	--font-pixel: 'Press Start 2P', monospace;
+	--font-system: system-ui, -apple-system, sans-serif;
+	
+	/* Font sizes */
+	--text-xs: 0.625rem;
+	--text-sm: 0.75rem;
+	--text-base: 0.875rem;
+	--text-lg: 1rem;
+	--text-xl: 1.25rem;
+	--text-2xl: 1.5rem;
+	--text-3xl: 1.75rem;
+	
+	/* ===== Transitions ===== */
+	
+	--transition-fast: 0.15s ease;
+	--transition-normal: 0.2s ease;
+	--transition-slow: 0.3s ease;
+	
+	/* ===== Z-Index Layers ===== */
+	
+	--z-background: 0;
+	--z-content: 1;
+	--z-overlay: 10;
+	--z-modal: 100;
+	--z-tooltip: 1000;
+	
+	/* ===== Animation Durations ===== */
+	
+	--duration-fast: 0.3s;
+	--duration-normal: 0.5s;
+	--duration-slow: 0.8s;
+	--duration-very-slow: 1.5s;
+}
+
+/* ===== Common Animations ===== */
+
+@keyframes shimmer {
+	0%, 100% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.9; transform: scale(1.02); }
+}
+
+@keyframes glow-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+@keyframes bounce {
+	0%, 100% { transform: translateY(0); }
+	50% { transform: translateY(-10px); }
+}
+
+@keyframes shake {
+	0%, 100% { transform: translateX(0); }
+	10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+	20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+@keyframes slide-up {
+	from { 
+		opacity: 0;
+		transform: translateY(20px); 
+	}
+	to { 
+		opacity: 1;
+		transform: translateY(0); 
+	}
+}
+
+@keyframes slide-down {
+	from { 
+		opacity: 0;
+		transform: translateY(-20px); 
+	}
+	to { 
+		opacity: 1;
+		transform: translateY(0); 
+	}
+}
+
+/* ===== Utility Classes ===== */
+
+.pixel-text {
+	font-family: var(--font-pixel);
+	text-shadow: var(--text-shadow-pixel);
+}
+
+.glow-gold {
+	filter: drop-shadow(var(--glow-gold));
+}
+
+.glow-red {
+	filter: drop-shadow(var(--glow-red));
+}
+
+.glow-green {
+	filter: drop-shadow(var(--glow-green));
+}
+
+.card-golden {
+	background: var(--bg-card-primary);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--card-shadow);
+}
+
+.card-golden:hover {
+	box-shadow: var(--card-shadow-hover);
+}

@@ -54,7 +54,7 @@ public abstract class Question {
         correctIndex = choices.indexOf(correctAnswer);
     }
 
-    // Method for hints: removes two incorrect options
+    // for hints: removes two incorrect options
     public List<String> removeIncorrectOptions() {
         List<String> hintedChoices = new ArrayList<>();
         List<String> incorrectOptions = new ArrayList<>();
@@ -75,7 +75,7 @@ public abstract class Question {
         return hintedChoices;
     }
 
-    // Abstract method for difficulty-specific score/damage calculation (if needed later)
+    // Abstract method for difficulty-specific score/damage 
     public abstract int calculateScore();
     public abstract int calculateDamage();
 
@@ -83,7 +83,7 @@ public abstract class Question {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(questionText).append("\n");
-        for (int i = 0; i < choices.size(); i++) {
+        for (int i =    0; i < choices.size(); i++) {
             sb.append(String.format("%d. %s\n", (i + 1), choices.get(i)));
         }
         return sb.toString();

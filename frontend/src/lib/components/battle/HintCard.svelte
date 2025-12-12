@@ -88,20 +88,16 @@
 	
 	.hint-panel {
 		position: relative;
-		background: linear-gradient(180deg, 
-			rgba(49, 46, 129, 0.95) 0%, 
-			rgba(30, 27, 75, 0.95) 50%,
-			rgba(49, 46, 129, 0.95) 100%
-		);
+		background: var(--bg-hint-panel);
 		border: 3px solid transparent;
-		border-radius: 12px;
-		padding: 10px;
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
 		
 		/* Multi-layer border effect */
 		box-shadow: 
 			0 0 0 2px rgba(139, 92, 246, 0.4),
 			0 0 0 4px rgba(49, 46, 129, 0.6),
-			0 8px 24px rgba(0, 0, 0, 0.3),
+			var(--drop-shadow-lg),
 			inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 	
@@ -150,18 +146,18 @@
 		font-size: 0.6rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
-		color: #a78bfa;
+		color: var(--color-purple-400);
 		text-transform: uppercase;
 		flex: 1;
-		font-family: 'Press Start 2P', system-ui, monospace;
+		font-family: var(--font-pixel);
 	}
 	
 	.hint-counter {
 		font-size: 0.875rem;
 		font-weight: 800;
-		color: #fbbf24;
-		text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
-		font-family: 'Press Start 2P', system-ui, monospace;
+		color: var(--color-gold);
+		text-shadow: var(--text-shadow-glow-gold-strong);
+		font-family: var(--font-pixel);
 	}
 	
 	/* Hint orbs */
@@ -188,17 +184,17 @@
 	}
 	
 	.hint-orb.active {
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		background: var(--bg-button-gold);
 		box-shadow: 
-			0 0 12px rgba(251, 191, 36, 0.6),
-			0 4px 8px rgba(0, 0, 0, 0.3),
+			var(--glow-gold-strong),
+			var(--drop-shadow-md),
 			inset 0 1px 0 rgba(255, 255, 255, 0.4);
 		animation: orb-pulse 2s ease-in-out infinite;
 	}
 	
 	.hint-orb.empty {
 		background: rgba(30, 30, 40, 0.6);
-		border: 2px solid rgba(71, 85, 105, 0.5);
+		border: 2px solid var(--color-slate-600-alpha);
 	}
 	
 	@keyframes orb-pulse {
@@ -246,16 +242,16 @@
 	}
 	
 	.hint-button.active {
-		background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+		background: var(--bg-button-gold);
 		box-shadow: 
-			0 4px 12px rgba(251, 191, 36, 0.4),
+			var(--glow-gold),
 			inset 0 1px 0 rgba(255, 255, 255, 0.3);
 	}
 	
 	.hint-button.active:hover {
 		transform: translateY(-2px);
 		box-shadow: 
-			0 6px 16px rgba(251, 191, 36, 0.5),
+			var(--glow-gold-strong),
 			inset 0 1px 0 rgba(255, 255, 255, 0.3);
 	}
 	

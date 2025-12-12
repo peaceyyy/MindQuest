@@ -35,6 +35,35 @@
 		perspective: 1000px;
 	}
 	
+	/* Energy aura effect */
+	.sprite-container::before {
+		content: '';
+		position: absolute;
+		width: 120%;
+		height: 120%;
+		background: radial-gradient(
+			circle,
+			rgba(59, 130, 246, 0.3) 0%,
+			rgba(59, 130, 246, 0.1) 40%,
+			transparent 70%
+		);
+		border-radius: 50%;
+		animation: aura-pulse 2s ease-in-out infinite;
+		filter: blur(8px);
+		z-index: -1;
+	}
+	
+	@keyframes aura-pulse {
+		0%, 100% {
+			opacity: 0.4;
+			transform: scale(0.9);
+		}
+		50% {
+			opacity: 0.8;
+			transform: scale(1.1);
+		}
+	}
+	
 	@media (min-width: 768px) {
 		.sprite-container {
 			width: 12rem; /* 192px */
@@ -63,6 +92,17 @@
 		/* Critical for smooth animation */
 		transform: translateZ(0);
 		backface-visibility: hidden;
+		filter: drop-shadow(0 0 15px rgba(96, 165, 250, 0.5));
+		animation: sprite-glow 3s ease-in-out infinite;
+	}
+	
+	@keyframes sprite-glow {
+		0%, 100% {
+			filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.4));
+		}
+		50% {
+			filter: drop-shadow(0 0 25px rgba(96, 165, 250, 0.8));
+		}
 	}
 	
 	/* Optimized keyframes - only transform property */

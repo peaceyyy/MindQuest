@@ -20,7 +20,7 @@ public class MixedTopicsConfig {
     private final long seed;
     private final DifficultyMode difficultyMode;
     private final String difficulty; // Unified difficulty for all topics
-    private final SourceConfig sourceConfig; // reuse existing SourceConfig
+    private final SourceConfig sourceConfig; // reuses existing SourceConfig
     private final int questionsPerRound;
     private final int perTopicLimit;
     private final int llmTimeoutMillis;

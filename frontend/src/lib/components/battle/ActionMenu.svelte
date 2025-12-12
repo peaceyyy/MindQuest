@@ -54,38 +54,46 @@
 
 <style>
 	.action-menu {
-		filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+		filter: drop-shadow(var(--drop-shadow-md));
 	}
 	
 	.choice-button {
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 12px 16px;
-		background: linear-gradient(180deg, 
-			rgba(15, 23, 42, 0.95) 0%, 
-			rgba(30, 41, 59, 0.95) 100%
-		);
-		border: 3px solid rgba(71, 85, 105, 0.8);
-		border-radius: 10px;
+		gap: var(--spacing-md);
+		padding: var(--spacing-lg) var(--spacing-xl);
+		background: var(--bg-card-primary);
+		border: 3px solid var(--color-slate-600);
+		border-radius: var(--radius-lg);
 		text-align: left;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all var(--transition-normal);
 		overflow: hidden;
-		
 		box-shadow: 
-			0 0 0 1px rgba(148, 163, 184, 0.2),
+			0 0 0 1px var(--color-slate-400)20,
 			inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 	
 	.choice-button:hover:not(:disabled) {
-		border-color: #60a5fa;
-		transform: translateX(4px);
+		border-color: var(--color-player-primary);
+		transform: translateX(4px) translateY(-2px);
 		box-shadow: 
-			0 0 0 1px rgba(96, 165, 250, 0.4),
-			0 0 20px rgba(59, 130, 246, 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+			0 0 0 1px var(--color-player-primary)66,
+			0 0 30px rgba(59, 130, 246, 0.6),
+			0 0 60px rgba(59, 130, 246, 0.3),
+			0 8px 20px rgba(0, 0, 0, 0.4),
+			inset 0 1px 0 rgba(255, 255, 255, 0.15);
+		animation: choice-energy 0.6s ease-in-out infinite;
+	}
+	
+	@keyframes choice-energy {
+		0%, 100% {
+			filter: brightness(1) contrast(1);
+		}
+		50% {
+			filter: brightness(1.15) contrast(1.1);
+		}
 	}
 	
 	.choice-button:active:not(:disabled) {
@@ -95,7 +103,7 @@
 	.choice-button.eliminated {
 		opacity: 0.5;
 		cursor: not-allowed;
-		border-color: rgba(239, 68, 68, 0.4);
+		border-color: var(--color-danger)66;
 		background: linear-gradient(180deg, 
 			rgba(30, 30, 30, 0.9) 0%, 
 			rgba(40, 40, 40, 0.9) 100%
@@ -114,20 +122,20 @@
 		justify-content: center;
 		min-width: 32px;
 		height: 32px;
-		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-		border-radius: 6px;
+		background: linear-gradient(135deg, var(--color-player-primary) 0%, var(--color-player-secondary) 100%);
+		border-radius: var(--radius-sm);
 		font-weight: 800;
-		font-size: 0.875rem;
+		font-size: var(--text-base);
 		color: white;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+		text-shadow: var(--text-shadow-standard);
 		box-shadow: 
-			0 2px 4px rgba(0, 0, 0, 0.3),
+			var(--drop-shadow-sm),
 			inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		flex-shrink: 0;
 	}
 	
 	.choice-label.eliminated {
-		background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+		background: linear-gradient(135deg, var(--color-slate-500) 0%, var(--color-slate-600) 100%);
 	}
 	
 	/* Selection arrow */
@@ -135,10 +143,10 @@
 		position: absolute;
 		left: 8px;
 		opacity: 0;
-		color: #60a5fa;
-		font-size: 0.75rem;
-		transition: opacity 0.15s ease;
-		text-shadow: 0 0 8px rgba(96, 165, 250, 0.8);
+		color: var(--color-player-primary);
+		font-size: var(--text-sm);
+		transition: opacity var(--transition-fast);
+		text-shadow: var(--glow-blue);
 	}
 	
 	.choice-button:hover:not(:disabled) .selection-arrow {
@@ -155,10 +163,10 @@
 	.choice-text {
 		flex: 1;
 		font-weight: 600;
-		font-size: 0.875rem;
-		color: #e2e8f0;
+		font-size: var(--text-base);
+		color: var(--color-slate-100);
 		line-height: 1.3;
-		transition: color 0.2s ease;
+		transition: color var(--transition-normal);
 	}
 	
 	.choice-button:hover:not(:disabled) .choice-text {
@@ -167,12 +175,12 @@
 	
 	.choice-text.eliminated {
 		text-decoration: line-through;
-		color: #64748b;
+		color: var(--color-slate-500);
 	}
 	
 	.eliminated-mark {
-		color: #ef4444;
-		margin-right: 8px;
+		color: var(--color-danger);
+		margin-right: var(--spacing-sm);
 		font-weight: 700;
 	}
 	
@@ -182,11 +190,11 @@
 		inset: 0;
 		background: linear-gradient(90deg, 
 			transparent 0%, 
-			rgba(59, 130, 246, 0.1) 50%, 
+			var(--color-player-primary)1a 50%, 
 			transparent 100%
 		);
 		opacity: 0;
-		transition: opacity 0.2s ease;
+		transition: opacity var(--transition-normal);
 		pointer-events: none;
 	}
 	

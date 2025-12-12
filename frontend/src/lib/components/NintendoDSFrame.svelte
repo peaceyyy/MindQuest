@@ -71,7 +71,6 @@
 		background: linear-gradient(180deg, #0a0a12 0%, #12121f 50%, #0f0f1a 100%);
 	}
 	
-	/* ===== The Device Shell - Simple vertical layout ===== */
 	.device-shell {
 		display: flex;
 		flex-direction: column;

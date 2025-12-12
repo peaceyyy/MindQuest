@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import * as formatting from '$lib/services/formatting';
 
 	let points = $derived(parseInt(page.url.searchParams.get('points') || '0', 10));
 	let answered = $derived(parseInt(page.url.searchParams.get('answered') || '0', 10));
-	let accuracy = $derived(answered > 0 ? Math.round((points / (answered * 10)) * 100) : 0);
+	let accuracy = $derived(formatting.calculateAccuracy(points, answered));
+	let performance = $derived(formatting.getPerformanceRating(accuracy));
+	let grade = $derived(formatting.getGradeLetter(accuracy));
 	
 	function playAgain() {
 		goto('/');
@@ -13,27 +16,35 @@
 
 <div class="container">
 	<div class="results-card">
-		<h1>Round Complete!</h1>
+		<h1 class="pixel-text">Round Complete!</h1>
+		
+		<div class="performance-badge" style="background: {performance.color}20; border-color: {performance.color};">
+			<span class="performance-emoji">{performance.emoji}</span>
+			<span class="performance-label">{performance.label}</span>
+			<span class="performance-grade">Grade: {grade}</span>
+		</div>
 		
 		<div class="stats-grid">
 			<div class="stat">
-				<div class="stat-value">{points}</div>
+				<div class="stat-value" style="color: var(--color-gold);">{formatting.formatPoints(points)}</div>
 				<div class="stat-label">Total Points</div>
 			</div>
 			
 			<div class="stat">
-				<div class="stat-value">{answered}</div>
+				<div class="stat-value" style="color: var(--color-info);">{answered}</div>
 				<div class="stat-label">Questions Answered</div>
 			</div>
 			
 			<div class="stat">
-				<div class="stat-value">{accuracy}%</div>
+				<div class="stat-value" style="color: {performance.color};">{accuracy}%</div>
 				<div class="stat-label">Accuracy</div>
 			</div>
 		</div>
 		
 		<div class="actions">
-			<button class="primary" onclick={playAgain}>Play Again</button>
+			<button class="primary modal-btn modal-btn-primary" onclick={playAgain}>
+				▶ Play Again ◀
+			</button>
 		</div>
 	</div>
 </div>
@@ -42,67 +53,96 @@
 	.container {
 		max-width: 600px;
 		margin: 3rem auto;
-		padding: 1rem;
+		padding: var(--spacing-lg);
 	}
 
 	.results-card {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
+		background: var(--bg-card-primary);
+		border-radius: var(--radius-xl);
 		padding: 3rem 2rem;
 		text-align: center;
+		box-shadow: var(--card-shadow);
 	}
 
 	h1 {
-		font-size: 2.5rem;
-		margin-bottom: 2.5rem;
+		font-size: var(--text-3xl);
+		margin-bottom: 2rem;
+		color: var(--color-gold);
+	}
+
+	.performance-badge {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--spacing-sm);
+		padding: var(--spacing-xl);
+		border-radius: var(--radius-lg);
+		border: 2px solid;
+		margin-bottom: var(--spacing-2xl);
+		animation: pulse var(--duration-very-slow) ease-in-out infinite;
+	}
+
+	.performance-emoji {
+		font-size: 3rem;
+	}
+
+	.performance-label {
+		font-family: var(--font-pixel);
+		font-size: var(--text-base);
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+
+	.performance-grade {
+		font-size: var(--text-sm);
+		opacity: 0.8;
 	}
 
 	.stats-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 2rem;
+		gap: var(--spacing-xl);
 		margin-bottom: 3rem;
 	}
 
 	.stat {
-		padding: 1.5rem;
-		background: white;
-		border-radius: 8px;
-		border: 1px solid #e5e7eb;
+		padding: var(--spacing-xl);
+		background: var(--bg-card-secondary);
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-slate-700);
+		transition: transform var(--transition-fast);
+	}
+
+	.stat:hover {
+		transform: translateY(-4px);
 	}
 
 	.stat-value {
-		font-size: 2.5rem;
+		font-size: var(--text-3xl);
 		font-weight: 700;
-		color: #3b82f6;
-		margin-bottom: 0.5rem;
+		margin-bottom: var(--spacing-sm);
+		font-family: var(--font-pixel);
 	}
 
 	.stat-label {
-		font-size: 0.875rem;
-		color: #6b7280;
+		font-size: var(--text-sm);
+		color: var(--color-slate-400);
 		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.actions {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: var(--spacing-lg);
 	}
 
 	button {
-		padding: 1rem 2rem;
-		font-size: 1.125rem;
-		font-weight: 600;
-		background: #3b82f6;
-		color: white;
-		border: none;
-		border-radius: 6px;
+		padding: var(--spacing-lg) var(--spacing-2xl);
+		font-size: var(--text-sm);
 		cursor: pointer;
-	}
-
-	button:hover {
-		background: #2563eb;
+		transition: all var(--transition-normal);
 	}
 </style>

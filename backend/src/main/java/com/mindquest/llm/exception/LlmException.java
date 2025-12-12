@@ -2,7 +2,6 @@ package com.mindquest.llm.exception;
 
 /**
  * Exception thrown by LLM providers.
- * Categorizes errors for easier handling and user feedback.
  */
 public class LlmException extends Exception {
     

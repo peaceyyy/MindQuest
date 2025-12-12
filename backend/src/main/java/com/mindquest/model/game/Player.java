@@ -55,7 +55,7 @@ public class Player {
     
     /**
      * Initialize hints based on difficulty.
-     * Easy: 3 hints (questions are simple, but hints help learning)
+     * Easy: 3 hints 
      * Medium: 2 hints (balanced)
      * Hard: 1 hint (limited help for difficult questions)
      */

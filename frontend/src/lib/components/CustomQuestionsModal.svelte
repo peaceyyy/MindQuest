@@ -422,14 +422,12 @@
                     class="tab-btn {activeTab === 'files' ? 'active' : ''}"
                     onclick={() => activeTab = 'files'}
                 >
-                    <span class="tab-icon">📁</span>
                     Files
                 </button>
                 <button 
                     class="tab-btn {activeTab === 'ai' ? 'active' : ''}"
                     onclick={() => activeTab = 'ai'}
                 >
-                    <span class="tab-icon">🤖</span>
                     LLM Providers
                     {#if !providersLoading && anyProviderAvailable}
                         <span class="status-dot available"></span>
@@ -902,6 +900,12 @@
         overflow-y: auto;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         animation: slideUp 0.3s ease-out;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+    
+    .modal-content::-webkit-scrollbar {
+        display: none; /* Chrome/Safari/Opera */
     }
 
     @keyframes slideUp {
@@ -921,21 +925,23 @@
 
     .close-button {
         position: absolute;
-        top: -12px;
-        right: -12px;
-        background: #ff6b6b;
+        top: -16px;
+        right: -16px;
+        background: #ef4444;
         color: white;
-        border: 3px solid white;
+        border: 4px solid white;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        font-size: 1.5rem;
+        width: 48px;
+        height: 48px;
+        font-size: 1.75rem;
+        font-weight: bold;
+        line-height: 1;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1001;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.6), 0 0 0 2px rgba(239, 68, 68, 0.3);
         transition: all 0.2s;
     }
 

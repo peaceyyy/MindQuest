@@ -1,5 +1,126 @@
 {
   "sets" : [ {
+    "id" : "d541b9fd-dc3c-413b-9330-4c61f18a3669",
+    "name" : "Networking II Exam CCNA - Medium",
+    "topic" : "Networking II Exam CCNA",
+    "difficulty" : "medium",
+    "provider" : "gemini",
+    "createdAt" : 1765242039784,
+    "questions" : [ {
+      "questionText" : "Which of the following is a private IP address range often used in internal networks?",
+      "choices" : [ "10.0.0.0 to 10.255.255.255", "172.16.0.0 to 172.31.255.255", "192.168.0.0 to 192.168.255.255", "All of the above" ],
+      "correctIndex" : 3,
+      "id" : "GEMINI_MEDIUM_021",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "A network engineer wants to segment a /24 network into 8 equal subnets. What will be the new subnet mask in CIDR notation?",
+      "choices" : [ "/26", "/27", "/28", "/29" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_022",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "Which protocol is used by routers to dynamically learn routes and share routing information with other routers in the same autonomous system?",
+      "choices" : [ "BGP", "OSPF", "RIPv1", "EIGRP" ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_MEDIUM_023",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "What is the primary purpose of NAT (Network Address Translation) in a home or small office network?",
+      "choices" : [ "To provide DHCP services to internal hosts", "To translate private IP addresses to a single public IP address", "To encrypt traffic between the internal network and the internet", "To filter unwanted traffic from the internet" ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_MEDIUM_024",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "A router receives a packet with a destination IP address that is not in its routing table. What action will the router typically take?",
+      "choices" : [ "Send an ICMP Redirect message to the source host", "Forward the packet to the default gateway (if configured)", "Discard the packet and send an ICMP Destination Unreachable message", "Broadcast the packet to all connected interfaces" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_025",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "Which of the following is a characteristic of a link-state routing protocol?",
+      "choices" : [ "Routers share their entire routing table with neighbors", "Uses hop count as the sole metric", "Each router maintains a complete topology map of the network", "Updates are sent periodically and in full" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_026",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "What does the 'show ip route' command primarily display on a Cisco router?",
+      "choices" : [ "ARP table entries", "The router's routing table", "Interface status and statistics", "DHCP lease information" ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_MEDIUM_027",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "When configuring a static route, what does the administrative distance value represent?",
+      "choices" : [ "The number of hops to the destination network", "The cost of the link to the next-hop router", "The trustworthiness of a routing source", "The time-to-live (TTL) for the route" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_028",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "What is the benefit of using VLSM (Variable Length Subnet Masking)?",
+      "choices" : [ "It simplifies network addressing for large organizations", "It allows for more efficient use of IP address space", "It provides a higher level of security for subnets", "It eliminates the need for routing protocols" ],
+      "correctIndex" : 1,
+      "id" : "GEMINI_MEDIUM_029",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    }, {
+      "questionText" : "Which type of VPN primarily connects entire networks together, often between branch offices and a main office?",
+      "choices" : [ "Remote-access VPN", "Client-to-site VPN", "Site-to-site VPN", "Personal VPN" ],
+      "correctIndex" : 2,
+      "id" : "GEMINI_MEDIUM_030",
+      "difficulty" : "Medium",
+      "topic" : "Networking II Exam CCNA"
+    } ]
+  }, {
+    "id" : "615afaa3-08c6-467f-b64d-ed377cf7aa50",
+    "name" : "The Minecraft Movie - Easy",
+    "topic" : "The Minecraft Movie",
+    "difficulty" : "easy",
+    "provider" : "gemini",
+    "createdAt" : 1765241912051,
+    "questions" : [ {
+      "questionText" : "What is the main game that The Minecraft Movie is based on?",
+      "choices" : [ "Minecraft", "Roblox", "Fortnite", "Terraria" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_016",
+      "difficulty" : "Easy",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "Which company is developing The Minecraft Movie?",
+      "choices" : [ "Warner Bros. Pictures", "Disney", "Universal Pictures", "Paramount Pictures" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_017",
+      "difficulty" : "Easy",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "What is the name of the main character in the Minecraft game, often depicted in promotional materials?",
+      "choices" : [ "Steve", "Alex", "Creeper", "Zombie" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_018",
+      "difficulty" : "Easy",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "What type of world does Minecraft primarily feature?",
+      "choices" : [ "Block-based", "Realistic", "Cartoonish", "Abstract" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_019",
+      "difficulty" : "Easy",
+      "topic" : "The Minecraft Movie"
+    }, {
+      "questionText" : "Which actor is rumored to be playing Steve in The Minecraft Movie?",
+      "choices" : [ "Jason Momoa", "Chris Pratt", "Dwayne Johnson", "Ryan Reynolds" ],
+      "correctIndex" : 0,
+      "id" : "GEMINI_EASY_020",
+      "difficulty" : "Easy",
+      "topic" : "The Minecraft Movie"
+    } ]
+  }, {
     "id" : "d4222670-c867-4edb-ae3a-67ba158481d3",
     "name" : "CCna Networking II Final Exam - Easy",
     "topic" : "CCna Networking II Final Exam",

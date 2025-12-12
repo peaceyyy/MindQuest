@@ -123,7 +123,6 @@ public class GameService {
     }
 
     /**
-     * Async variant to start a new round without blocking caller (UI).
      * Times out after 60 seconds to prevent indefinite hangs.
      */
     public CompletableFuture<Void> startNewRoundAsync(String topic, String difficulty) {

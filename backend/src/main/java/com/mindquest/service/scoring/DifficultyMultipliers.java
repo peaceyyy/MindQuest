@@ -1,13 +1,4 @@
 package com.mindquest.service.scoring;
-
-/**
- * Encapsulates difficulty-based scoring multipliers for game balance.
- * Centralizes multiplier configuration to facilitate tuning and maintain Single Responsibility Principle.
- * 
- * <p>Design Decision: Extracted from GameService to separate game balance configuration
- * from game logic execution. This follows the Open/Closed Principle - extending difficulty
- * tiers doesn't require modifying GameService.</p>
- */
 public final class DifficultyMultipliers {
     
     // XP (Experience Points) Multipliers
@@ -32,15 +23,6 @@ public final class DifficultyMultipliers {
     }
     
     /**
-     * Gets the experience points multiplier for a given difficulty level.
-     * 
-     * <p>Multiplier Tiers:</p>
-     * <ul>
-     *   <li>Easy: 1.0× (baseline scoring for fundamental questions)</li>
-     *   <li>Medium: 1.5× (50% XP boost for moderate difficulty)</li>
-     *   <li>Hard: 2.5× (150% XP boost for challenging content)</li>
-     * </ul>
-     * 
      * @param difficulty The difficulty level (case-insensitive: "Easy", "Medium", "Hard")
      * @return The XP multiplier (1.0 for Easy, 1.5 for Medium, 2.5 for Hard)
      */
@@ -59,8 +41,6 @@ public final class DifficultyMultipliers {
     
     /**
      * Gets the critical hit multiplier for a given difficulty level.
-     * Critical hits occur when the player answers within a short time threshold.
-     * 
      * <p>Multiplier Tiers (Inverted Design):</p>
      * <ul>
      *   <li>Easy: 1.05× (5% bonus - speed matters less for simple questions)</li>

@@ -65,7 +65,7 @@ public class LlmDiagnostic {
         }
         System.out.println();
         
-        // Test 4: GeminiProvider (will fail without API key - that's expected)
+        // Test 4: GeminiProvider (will fail without API key)
         System.out.println("4. Testing GeminiProvider:");
         try {
             String geminiKey = secrets.getGeminiApiKey();

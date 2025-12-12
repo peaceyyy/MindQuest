@@ -20,14 +20,70 @@
 </script>
 
 <div class="w-full max-w-[200px]" bind:this={barRef}>
-	<div class="flex justify-between text-xs font-bold mb-1 uppercase tracking-wider text-white" style="text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5), 0 0 10px rgba(234, 179, 8, 0.4);">
+	<div class="flex justify-between text-xs font-bold mb-1 uppercase tracking-wider text-white hp-label">
 		<span>{label}</span>
 		<span>{current}/{max}</span>
 	</div>
-	<div class="h-4 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-300 shadow-inner">
+	<div class="hp-bar-container">
 		<div 
-			class="h-full {dynamicColor()} transition-all duration-500 ease-out"
+			class="h-full {dynamicColor()} hp-bar-fill"
 			style="width: {percentage}%"
 		></div>
 	</div>
 </div>
+
+<style>
+	.hp-label {
+		text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5), var(--text-shadow-glow-gold);
+	}
+	
+	.hp-bar-container {
+		height: 1rem;
+		background-color: var(--color-slate-300);
+		border-radius: 9999px;
+		overflow: hidden;
+		border: 2px solid var(--color-slate-400);
+		box-shadow: 
+			inset 0 2px 4px rgba(0, 0, 0, 0.1),
+			0 0 10px rgba(251, 191, 36, 0.3);
+		position: relative;
+	}
+	
+	.hp-bar-container::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(
+			90deg,
+			transparent,
+			rgba(255, 255, 255, 0.4),
+			transparent
+		);
+		animation: hp-shimmer 2s infinite;
+		z-index: 2;
+	}
+	
+	@keyframes hp-shimmer {
+		0% { left: -100%; }
+		100% { left: 200%; }
+	}
+	
+	.hp-bar-fill {
+		transition: all var(--transition-slow) ease-out;
+		position: relative;
+		box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.3);
+	}
+	
+	.hp-bar-fill::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 50%;
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent);
+	}
+</style>

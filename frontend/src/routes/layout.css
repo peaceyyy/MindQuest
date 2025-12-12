@@ -1,2 +1,6 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+
+/* Import shared theme variables and utilities */
+@import '$lib/styles/theme.css';
+@import '$lib/styles/modal.css';
